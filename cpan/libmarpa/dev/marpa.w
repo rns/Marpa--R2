@@ -1389,7 +1389,7 @@ int marpa_g_symbol_is_valued_set(
       MARPA_ERROR(MARPA_ERR_VALUED_IS_LOCKED);
       return failure_indicator;
     }
-  XSY_is_Valued (symbol) = value;
+  XSY_is_Valued (symbol) = Boolean(value);
   return value;
 }
 
@@ -1512,7 +1512,7 @@ Marpa_Grammar g, Marpa_Symbol_ID xsy_id, int value)
         return failure_indicator;
       }
     XSY_is_Locked_Terminal (symbol) = 1;
-    return XSY_is_Terminal (symbol) = value;
+    return XSY_is_Terminal (symbol) = Boolean(value);
 }
 
 @*0 XSY is productive?.
@@ -1562,7 +1562,7 @@ Marpa_Grammar g, Marpa_Symbol_ID xsy_id, int value)
     xsy = XSY_by_ID (xsy_id);
     switch (value) {
     case 0: case 1:
-      return XSY_is_Completion_Event (xsy) = value;
+      return XSY_is_Completion_Event (xsy) = Boolean(value);
     }
     MARPA_ERROR (MARPA_ERR_INVALID_BOOLEAN);
     return failure_indicator;
@@ -1597,7 +1597,7 @@ Marpa_Grammar g, Marpa_Symbol_ID xsy_id, int value)
     xsy = XSY_by_ID (xsy_id);
     switch (value) {
     case 0: case 1:
-      return XSY_is_Nulled_Event (xsy) = value;
+      return XSY_is_Nulled_Event (xsy) = Boolean(value);
     }
     MARPA_ERROR (MARPA_ERR_INVALID_BOOLEAN);
     return failure_indicator;
@@ -1632,7 +1632,7 @@ Marpa_Grammar g, Marpa_Symbol_ID xsy_id, int value)
     xsy = XSY_by_ID (xsy_id);
     switch (value) {
     case 0: case 1:
-      return XSY_is_Prediction_Event (xsy) = value;
+      return XSY_is_Prediction_Event (xsy) = Boolean(value);
     }
     MARPA_ERROR (MARPA_ERR_INVALID_BOOLEAN);
     return failure_indicator;
@@ -2032,8 +2032,8 @@ PRIVATE
   XRL xrl_start (GRAMMAR g, const XSYID lhs, const XSYID * rhs, int length)
 {
   XRL xrl;
-  const int sizeof_xrl = offsetof (struct s_xrl, t_symbols) +
-    (length + 1) * sizeof (xrl->t_symbols[0]);
+  const size_t sizeof_xrl = offsetof (struct s_xrl, t_symbols) +
+    ((size_t)length + 1) * sizeof (xrl->t_symbols[0]);
   xrl = marpa_obs_start (g->t_xrl_obs, sizeof_xrl, ALIGNOF(XRL));
   Length_of_XRL (xrl) = length;
   xrl->t_symbols[0] = lhs;
@@ -2072,8 +2072,8 @@ PRIVATE IRL
 irl_start(GRAMMAR g, int length)
 {
   IRL irl;
-  const int sizeof_irl = offsetof (struct s_irl, t_nsyid_array) +
-    (length + 1) * sizeof (irl->t_nsyid_array[0]);
+  const size_t sizeof_irl = offsetof (struct s_irl, t_nsyid_array) +
+    ((size_t)length + 1) * sizeof (irl->t_nsyid_array[0]);
 
   /* Needs to be aligned as an IRL */
   irl = marpa__obs_alloc (g->t_obs, sizeof_irl, ALIGNOF(IRL_Object));
@@ -2452,7 +2452,7 @@ Marpa_Grammar g, Marpa_Rule_ID xrl_id, int flag)
         MARPA_ERROR (MARPA_ERR_INVALID_BOOLEAN);
         return failure_indicator;
       }
-    return Null_Ranks_High_of_RULE(xrl) = flag;
+    return Null_Ranks_High_of_RULE(xrl) = Boolean(flag);
 }
 
 @*0 Rule is user-created BNF?.
@@ -2882,7 +2882,7 @@ where the IRL starts.
 @<Int aligned IRL elements@> = int t_virtual_start;
 @ @<Initialize IRL elements@> = irl->t_virtual_start = -1;
 @ @<Function definitions@> =
-unsigned int _marpa_g_virtual_start(
+int _marpa_g_virtual_start(
     Marpa_Grammar g,
     Marpa_IRL_ID irl_id)
 {
@@ -2902,7 +2902,7 @@ where the IRL ends.
 @<Int aligned IRL elements@> = int t_virtual_end;
 @ @<Initialize IRL elements@> = irl->t_virtual_end = -1;
 @ @<Function definitions@> =
-unsigned int _marpa_g_virtual_end(
+int _marpa_g_virtual_end(
     Marpa_Grammar g,
     Marpa_IRL_ID irl_id)
 {
@@ -3007,13 +3007,9 @@ the rule, offset by the position of that preceding AHFA item.
 PRIVATE int
 symbol_instance_of_ahfa_item_get (AIM aim)
 {
-  int position = Position_of_AIM (aim);
-  const int null_count = Null_Count_of_AIM(aim);
-  /* \comment If this AHFA item is not a prediction */
-  if (position < 0 || position - null_count > 0) {
+  if (!AIM_is_Prediction(aim)) {
       const IRL irl = IRL_of_AIM (aim);
-      position = Position_of_AIM(aim-1);
-      return SYMI_of_IRL(irl) + position;
+      return SYMI_of_IRL(irl) + Position_of_AIM(aim-1);
   }
   return -1;
 }
@@ -3209,14 +3205,14 @@ PRIVATE_NOT_INLINE int sym_rule_cmp(
     for separator of sequences */
   struct sym_rule_pair *const p_rh_sym_rule_pair_base =
     marpa_obs_new (MARPA_AVL_OBSTACK (rhs_avl_tree), struct sym_rule_pair,
-                    External_Size_of_G (g));
+                    (size_t)External_Size_of_G (g));
   struct sym_rule_pair *p_rh_sym_rule_pairs = p_rh_sym_rule_pair_base;
 
   /* \comment AVL tree for LHS symbols */
   const MARPA_AVL_TREE lhs_avl_tree = _marpa_avl_create (sym_rule_cmp, NULL);
   struct sym_rule_pair *const p_lh_sym_rule_pair_base =
     marpa_obs_new (MARPA_AVL_OBSTACK (lhs_avl_tree), struct sym_rule_pair,
-                    xrl_count);
+                    (size_t)xrl_count);
   struct sym_rule_pair *p_lh_sym_rule_pairs = p_lh_sym_rule_pair_base;
 
   lhs_v = bv_obs_create (obs_precompute, pre_census_xsy_count);
@@ -3228,7 +3224,7 @@ PRIVATE_NOT_INLINE int sym_rule_cmp(
       const int rule_length = Length_of_XRL (rule);
       const int is_sequence = XRL_is_Sequence (rule);
 
-      bv_bit_set (lhs_v, (unsigned int) lhs_id);
+      bv_bit_set (lhs_v, lhs_id);
 
       /* \comment Insert the LH Sym / XRL pair into the LH AVL tree */
       p_lh_sym_rule_pairs->t_symid = lhs_id;
@@ -3241,7 +3237,7 @@ PRIVATE_NOT_INLINE int sym_rule_cmp(
           const XSYID separator_id = Separator_of_XRL(rule);
           if (Minimum_of_XRL (rule) <= 0)
             {
-              bv_bit_set (empty_lhs_v, (unsigned int) lhs_id);
+              bv_bit_set (empty_lhs_v, lhs_id);
             }
             if (separator_id >= 0) {
               p_rh_sym_rule_pairs->t_symid = separator_id;
@@ -3253,7 +3249,7 @@ PRIVATE_NOT_INLINE int sym_rule_cmp(
 
       if (rule_length <= 0)
         {
-          bv_bit_set (empty_lhs_v, (unsigned int) lhs_id);
+          bv_bit_set (empty_lhs_v, lhs_id);
         }
       else
         {
@@ -3272,12 +3268,12 @@ PRIVATE_NOT_INLINE int sym_rule_cmp(
     struct sym_rule_pair *pair;
     XSYID seen_symid = -1;
     RULEID *const rule_data_base =
-      marpa_obs_new (obs_precompute, RULEID, External_Size_of_G (g));
+      marpa_obs_new (obs_precompute, RULEID, (size_t)External_Size_of_G (g));
     RULEID *p_rule_data = rule_data_base;
     traverser = _marpa_avl_t_init (rhs_avl_tree);
     /* \comment One extra "symbol" as an end marker */
     xrl_list_x_rh_sym =
-      marpa_obs_new (obs_precompute, RULEID *, pre_census_xsy_count + 1);
+      marpa_obs_new (obs_precompute, RULEID *, (size_t)pre_census_xsy_count + 1);
     for (pair = _marpa_avl_t_first (traverser); pair;
          pair = (struct sym_rule_pair*)_marpa_avl_t_next (traverser))
       {
@@ -3296,12 +3292,12 @@ PRIVATE_NOT_INLINE int sym_rule_cmp(
     struct sym_rule_pair *pair;
     XSYID seen_symid = -1;
     RULEID *const rule_data_base =
-      marpa_obs_new (obs_precompute, RULEID, xrl_count);
+      marpa_obs_new (obs_precompute, RULEID, (size_t)xrl_count);
     RULEID *p_rule_data = rule_data_base;
     traverser = _marpa_avl_t_init (lhs_avl_tree);
     /* \comment One extra "symbol" as an end marker */
     xrl_list_x_lh_sym =
-      marpa_obs_new (obs_precompute, RULEID *, pre_census_xsy_count + 1);
+      marpa_obs_new (obs_precompute, RULEID *, (size_t)pre_census_xsy_count + 1);
     for (pair = _marpa_avl_t_first (traverser); pair;
         pair = (struct sym_rule_pair *) _marpa_avl_t_next (traverser))
       {
@@ -3334,16 +3330,16 @@ and a flag which indicates if there are any.
         {
           if (XSY_is_Terminal (symbol))
             {
-              bv_bit_set (terminal_v, (unsigned int) symid);
+              bv_bit_set (terminal_v, symid);
               continue;
             }
-          bv_bit_clear (terminal_v, (unsigned int) symid);
+          bv_bit_clear (terminal_v, symid);
           continue;
         }
       /* \comment If not marked by the user, take the default
          from the boolean vector and mark the symbol,
          if necessary. */
-      if (bv_bit_test (terminal_v, (unsigned int) symid))
+      if (bv_bit_test (terminal_v, symid))
         XSY_is_Terminal (symbol) = 1;
     }
 }
@@ -3360,14 +3356,14 @@ RULEID** xrl_list_x_lh_sym = NULL;
 
 @ @<Census nullable symbols@> = 
 {
-  unsigned int min, max, start;
+  int min, max, start;
   XSYID xsy_id;
   int counted_nullables = 0;
   nullable_v = bv_obs_clone (obs_precompute, empty_lhs_v);
   rhs_closure (g, nullable_v, xrl_list_x_rh_sym);
   for (start = 0; bv_scan (nullable_v, start, &min, &max); start = max + 2)
     {
-      for (xsy_id = (XSYID) min; xsy_id <= (XSYID) max;
+      for (xsy_id = min; xsy_id <= max;
            xsy_id++)
         {
           XSY xsy = XSY_by_ID (xsy_id);
@@ -3392,13 +3388,13 @@ RULEID** xrl_list_x_lh_sym = NULL;
   bv_or (productive_v, nullable_v, terminal_v);
   rhs_closure (g, productive_v, xrl_list_x_rh_sym);
   {
-    unsigned int min, max, start;
+    int min, max, start;
     XSYID symid;
     for (start = 0; bv_scan (productive_v, start, &min, &max);
          start = max + 2)
       {
-        for (symid = (XSYID) min;
-             symid <= (XSYID) max; symid++)
+        for (symid = min;
+             symid <= max; symid++)
           {
             XSY symbol = XSY_by_ID (symid);
             symbol->t_is_productive = 1;
@@ -3408,7 +3404,7 @@ RULEID** xrl_list_x_lh_sym = NULL;
 }
 
 @ @<Check that start symbol is productive@> =
-if (_MARPA_UNLIKELY(!bv_bit_test(productive_v, (unsigned int)start_xsy_id)))
+if (_MARPA_UNLIKELY(!bv_bit_test(productive_v, start_xsy_id)))
 {
     MARPA_ERROR(MARPA_ERR_UNPRODUCTIVE_START);
     goto FAILURE;
@@ -3445,12 +3441,13 @@ where many of the right hand sides repeat symbols.
     {
       XRL rule = XRL_by_ID (rule_id);
       XSYID lhs_id = LHS_ID_of_RULE (rule);
-      unsigned int rhs_ix, rule_length = Length_of_XRL (rule);
+      int rhs_ix;
+      int rule_length = Length_of_XRL (rule);
       for (rhs_ix = 0; rhs_ix < rule_length; rhs_ix++)
 	{
 	  matrix_bit_set (reach_matrix,
-			  (unsigned int) lhs_id,
-			  (unsigned int) RHS_ID_of_RULE (rule, rhs_ix));
+			  lhs_id,
+			  RHS_ID_of_RULE (rule, rhs_ix));
 	}
       if (XRL_is_Sequence (rule))
 	{
@@ -3458,8 +3455,8 @@ where many of the right hand sides repeat symbols.
 	  if (separator_id >= 0)
 	    {
 	      matrix_bit_set (reach_matrix,
-			      (unsigned int) lhs_id,
-			      (unsigned int) separator_id);
+			      lhs_id,
+			      separator_id);
 	    }
 	}
     }
@@ -3474,13 +3471,13 @@ Therefore there is no code to free it.
 @<Census accessible symbols@> = 
 {
   Bit_Vector accessible_v =
-    matrix_row (reach_matrix, (unsigned int) start_xsy_id);
-  unsigned int min, max, start;
+    matrix_row (reach_matrix, start_xsy_id);
+  int min, max, start;
   XSYID symid;
   for (start = 0; bv_scan (accessible_v, start, &min, &max); start = max + 2)
     {
-      for (symid = (XSYID) min;
-           symid <= (XSYID) max; symid++)
+      for (symid =  min;
+           symid <=  max; symid++)
         {
           XSY symbol = XSY_by_ID (symid);
           symbol->t_is_accessible = 1;
@@ -3495,15 +3492,15 @@ reach a terminal symbol.
 {
   Bit_Vector reaches_terminal_v = bv_shadow (terminal_v);
   int nulling_terminal_found = 0;
-  unsigned int min, max, start;
+  int min, max, start;
   for (start = 0; bv_scan (lhs_v, start, &min, &max); start = max + 2)
     {
       XSYID productive_id;
-      for (productive_id = (XSYID) min;
-           productive_id <= (XSYID) max; productive_id++)
+      for (productive_id =  min;
+           productive_id <=  max; productive_id++)
         {
           bv_and (reaches_terminal_v, terminal_v,
-                  matrix_row (reach_matrix, (unsigned int) productive_id));
+                  matrix_row (reach_matrix, productive_id));
           if (bv_is_empty (reaches_terminal_v))
             {
               const XSY symbol = XSY_by_ID (productive_id);
@@ -3567,9 +3564,9 @@ Classify as nulling, nullable or productive.
       if (_MARPA_UNLIKELY (!XSY_is_Productive (rh_xsy)))
         is_productive = 0;
     }
-  XRL_is_Nulling (xrl) = is_nulling;
-  XRL_is_Nullable (xrl) = is_nullable;
-  XRL_is_Productive (xrl) = is_productive;
+  XRL_is_Nulling (xrl) = Boolean(is_nulling);
+  XRL_is_Nullable (xrl) = Boolean(is_nullable);
+  XRL_is_Productive (xrl) = Boolean(is_productive);
   XRL_is_Used (xrl) = XRL_is_Accessible (xrl) && XRL_is_Productive (xrl)
     && !XRL_is_Nulling (xrl);
 }
@@ -3671,19 +3668,19 @@ Change so that this runs only if there are prediction events.
   int nullable_xsy_count = 0;   /* Use this to make sure we
                                    have enough CILAR buffer space */
   void* matrix_buffer = my_malloc(matrix_sizeof(
-     (unsigned int) pre_census_xsy_count,
-                       (unsigned int) pre_census_xsy_count)); /* This
+     pre_census_xsy_count,
+                       pre_census_xsy_count)); /* This
   matrix is large and very temporary, so it does not go on the obstack */
   Bit_Matrix nullification_matrix =
-    matrix_buffer_create (matrix_buffer, (unsigned int) pre_census_xsy_count,
-                       (unsigned int) pre_census_xsy_count);
+    matrix_buffer_create (matrix_buffer, pre_census_xsy_count,
+                       pre_census_xsy_count);
   for (xsyid = 0; xsyid < pre_census_xsy_count; xsyid++)
     {                           /* Every nullable symbol symbol nullifies itself */
       if (!XSYID_is_Nullable (xsyid))
         continue;
       nullable_xsy_count++;
-      matrix_bit_set (nullification_matrix, (unsigned int) xsyid,
-                      (unsigned int) xsyid);
+      matrix_bit_set (nullification_matrix, xsyid,
+                      xsyid);
     }
   for (xrlid = 0; xrlid < xrl_count; xrlid++)
     {
@@ -3695,8 +3692,8 @@ Change so that this runs only if there are prediction events.
           for (rh_ix = 0; rh_ix < Length_of_XRL (xrl); rh_ix++)
             {
               const XSYID rhs_id = RHS_ID_of_XRL (xrl, rh_ix);
-              matrix_bit_set (nullification_matrix, (unsigned int) lhs_id,
-                              (unsigned int) rhs_id);
+              matrix_bit_set (nullification_matrix, lhs_id,
+                              rhs_id);
             }
         }
     }
@@ -3704,7 +3701,7 @@ Change so that this runs only if there are prediction events.
   for (xsyid = 0; xsyid < pre_census_xsy_count; xsyid++)
     {
       Bit_Vector bv_nullifications_by_to_xsy =
-        matrix_row (nullification_matrix, (unsigned long) xsyid);
+        matrix_row (nullification_matrix, xsyid);
       Nulled_XSYIDs_of_XSYID (xsyid) = 
         cil_bv_add(&g->t_cilar, bv_nullifications_by_to_xsy);
     }
@@ -4424,7 +4421,7 @@ rule structure, and performing the call back.
 {
   const int is_virtual_lhs = (piece_start > 0);
   Source_XRL_of_IRL(chaf_irl) = rule;
-  IRL_has_Virtual_LHS (chaf_irl) = is_virtual_lhs;
+  IRL_has_Virtual_LHS (chaf_irl) = Boolean(is_virtual_lhs);
   IRL_has_Virtual_RHS (chaf_irl) =
     Length_of_IRL (chaf_irl) > real_symbol_count;
   Virtual_Start_of_IRL(chaf_irl) = piece_start;
@@ -4516,8 +4513,8 @@ loop rule count, with the final tally.
 {
     int loop_rule_count = 0;
     Bit_Matrix unit_transition_matrix =
-        matrix_obs_create (obs_precompute, (unsigned int) xrl_count,
-            (unsigned int) xrl_count);
+        matrix_obs_create (obs_precompute, xrl_count,
+            xrl_count);
     @<Mark direct unit transitions in |unit_transition_matrix|@>@;
     transitive_closure(unit_transition_matrix);
     @<Mark loop rules@>@;
@@ -4585,7 +4582,7 @@ rule with |nonnulling_id| on the LHS.
       /* Direct loops ($A \RA A$) only need the $(rule_id, rule_id)$ bit set,
          but it is not clear that it is a win to special case them. */
       const RULEID to_rule_id = *p_xrl;
-      matrix_bit_set (unit_transition_matrix, (unsigned int) rule_id,
+      matrix_bit_set (unit_transition_matrix, rule_id,
                       to_rule_id);
     }
 }
@@ -4597,8 +4594,8 @@ rule with |nonnulling_id| on the LHS.
     {
       XRL rule;
       if (!matrix_bit_test
-          (unit_transition_matrix, (unsigned int) rule_id,
-           (unsigned int) rule_id))
+          (unit_transition_matrix, rule_id,
+           rule_id))
         continue;
       loop_rule_count++;
       rule = XRL_by_ID (rule_id);
@@ -4847,12 +4844,13 @@ and AIM pointers can be portably compared.
 A lot of code relies on these facts.
 @d Next_AIM_of_AIM(aim) ((aim)+1)
 @d AIM_by_ID(id) (g->t_AHFA_items+(id))
+@d ID_of_AIM(aim) ((aim) - g->t_AHFA_items)
 @<Widely aligned grammar elements@> =
    AIM t_AHFA_items;
 @
 @d AIM_Count_of_G(g) ((g)->t_aim_count)
 @<Int aligned grammar elements@> =
-   unsigned int t_aim_count;
+   int t_aim_count;
 @ The space is allocated during precomputation.
 Because the grammar may be destroyed before precomputation,
 I test that |g->t_AHFA_items| is non-zero.
@@ -4876,11 +4874,6 @@ return item_id < (AIMID)AIM_Count_of_G(g) && item_id >= 0;
 @<Widely aligned AHFA item elements@> =
     IRL t_irl;
 
-@*0 Position.
-Position in the RHS, -1 for a completion.
-@d Position_of_AIM(aim) ((aim)->t_position)
-@<Int aligned AHFA item elements@> =
-int t_position;
 
 @*0 Postdot symbol.
 |-1| if the item is a completion.
@@ -4897,6 +4890,15 @@ this AHFA items's dot position.
 @d Null_Count_of_AIM(aim) ((aim)->t_leading_nulls)
 @<Int aligned AHFA item elements@> =
 int t_leading_nulls;
+
+@*0 Position.
+Position in the RHS, -1 for a completion.
+@d Position_of_AIM(aim) ((aim)->t_position)
+@d AIM_is_Prediction(aim) (
+  Position_of_AIM(aim) >= 0
+  && Position_of_AIM(aim) <= Null_Count_of_AIM(aim) )
+@<Int aligned AHFA item elements@> =
+int t_position;
 
 @*0 AHFA item external accessors.
 @<Function definitions@> =
@@ -4948,10 +4950,10 @@ int _marpa_g_AHFA_item_sort_key(Marpa_Grammar g,
 @ @<Create AHFA items@> =
 {
     IRLID irl_id;
-    AIMID ahfa_item_count = 0;
+    int ahfa_item_count = 0;
     AIM base_item;
     AIM current_item;
-    unsigned int symbol_instance_of_next_rule = 0;
+    int symbol_instance_of_next_rule = 0;
     for (irl_id = 0; irl_id < irl_count; irl_id++) {
       const IRL irl = IRL_by_ID(irl_id);
       @<Count the AHFA items in a rule@>@;
@@ -5098,7 +5100,8 @@ AHFA item as its new, final ID.
     {
       sort_array[item_id] = items + item_id;
     }
-  qsort (sort_array, (int) ahfa_item_count, sizeof (AIM), cmp_by_postdot_and_aimid);
+  qsort (sort_array, (size_t)ahfa_item_count,
+    sizeof (AIM), cmp_by_postdot_and_aimid);
   for (item_id = 0; item_id < (Marpa_AHFA_Item_ID) ahfa_item_count; item_id++)
     {
       Sort_Key_of_AIM (sort_array[item_id]) = item_id;
@@ -5218,9 +5221,11 @@ typedef struct s_AHFA_state AHFA_Object;
 Only a few AHFA items are initialized.
 Most are set dependent on context.
 @<Function definitions@> =
-PRIVATE void AHFA_initialize(AHFA ahfa)
+PRIVATE void AHFA_initialize(GRAMMAR g, AHFA ahfa)
 {
+    const AHFAID new_AHFA_id = AHFA_Count_of_G(g)++;
     @<Initialize AHFA@>@;
+    ahfa->t_key.t_id = new_AHFA_id;
 }
 
 @*0 XSYID Events.
@@ -5375,7 +5380,7 @@ PRIVATE int AHFA_state_id_is_valid(GRAMMAR g, AHFAID AHFA_state_id)
 @d Postdot_NSY_Count_of_AHFA(state) ((state)->t_postdot_nsy_count)
 @d Postdot_NSYIDAry_of_AHFA(state) ((state)->t_postdot_nsyidary)
 @<Widely aligned AHFA state elements@> = Marpa_Symbol_ID* t_postdot_nsyidary;
-@ @<Int aligned AHFA state elements@> = unsigned int t_postdot_nsy_count;
+@ @<Int aligned AHFA state elements@> = int t_postdot_nsy_count;
 
 @*0 AHFA state external accessors.
 @<Function definitions@> =
@@ -5464,8 +5469,8 @@ one non-nulling symbol in each IRL. */
           if (!NSY_is_Nulling (NSY_by_ID (rh_nsyid)))
             {
               matrix_bit_set (nsy_by_right_nsy_matrix,
-                              (unsigned int) LHSID_of_IRL (irl),
-                              (unsigned int) rh_nsyid);
+                              LHSID_of_IRL (irl),
+                              rh_nsyid);
               break;
             }
         }
@@ -5488,8 +5493,8 @@ one non-nulling symbol in each IRL. */
 If so, the rule is right recursive.
 (There is at least one non-nulling symbol in each IRL.) */
               if (matrix_bit_test (nsy_by_right_nsy_matrix,
-                                   (unsigned int) rh_nsyid,
-                                   (unsigned int) LHSID_of_IRL (irl)))
+                                   rh_nsyid,
+                                   LHSID_of_IRL (irl)))
                 {
                   IRL_is_Right_Recursive (irl) = 1;
                 }
@@ -5517,8 +5522,8 @@ one non-nulling symbol in each IRL. */
           if (!NSY_is_Nulling (NSY_by_ID (rh_nsyid)))
             {
               matrix_bit_set (nsy_by_right_nsy_matrix,
-                              (unsigned int) LHSID_of_IRL (irl),
-                              (unsigned int) rh_nsyid);
+                              LHSID_of_IRL (irl),
+                              rh_nsyid);
               break;
             }
         }
@@ -5606,12 +5611,35 @@ PRIVATE_NOT_INLINE int AHFA_state_cmp(
    @<Construct prediction matrix@>@;
    @<Construct right derivation matrix@>@;
    @<Construct initial AHFA states@>@;
+
+{
+  AIMID aim_id;
+  const int aim_count = AIM_Count_of_G (g);
+  AHFA previous_ahfa = NULL;
+  for (aim_id = 0; aim_id < aim_count; aim_id++)
+    {
+      const AIM aim = AIM_by_ID (aim_id);
+      if (AIM_is_Prediction (aim))
+	{
+	  previous_ahfa = NULL;
+	  continue;
+	}
+      // Populate singletons here
+      previous_ahfa =
+	create_singleton_AHFA_state (g, aim, singleton_duplicates,
+				     obs_precompute, previous_ahfa,
+				     irl_by_sort_key, &states, duplicates,
+				     item_list_working_buffer,
+				     prediction_matrix);
+    }
+}
+
    while ((p_working_state = DQUEUE_NEXT(states, AHFA_Object))) {
        @<Process an AHFA state from the working stack@>@;
    }
    g->t_AHFA = DQUEUE_BASE(states, AHFA_Object); /* ``Steals"
        the |DQUEUE|'s data */
-   ahfa_count_of_g = AHFA_Count_of_G(g) = DQUEUE_END(states);
+   ahfa_count_of_g = AHFA_Count_of_G(g);
    @<Resize the transitions@>@;
    @<Resort the AIMs and populate the Leo base AEXes@>@;
    @<Populate the completed symbol data in the transitions@>@;
@@ -5620,14 +5648,13 @@ PRIVATE_NOT_INLINE int AHFA_state_cmp(
 
 @ @<Declare locals for creating AHFA states@> =
    AHFA p_working_state;
-   const unsigned int initial_no_of_states = 2*AIM_Count_of_G(g);
-   AIM AHFA_item_0_p = g->t_AHFA_items;
+   const int initial_no_of_states = 2*AIM_Count_of_G(g);
    Bit_Matrix prediction_matrix;
    IRL* irl_by_sort_key = marpa_new(IRL, irl_count);
   Bit_Vector per_ahfa_complete_v = bv_obs_create (obs_precompute, nsy_count);
   Bit_Vector per_ahfa_postdot_v = bv_obs_create (obs_precompute, nsy_count);
     MARPA_AVL_TREE duplicates;
-    AHFA* singleton_duplicates;
+      AHFA* singleton_duplicates;
    DQUEUE_DECLARE(states);
   int ahfa_count_of_g;
 
@@ -5637,8 +5664,8 @@ PRIVATE_NOT_INLINE int AHFA_state_cmp(
 
 @ @<Initialize duplicates data structures@> =
 {
-  unsigned int item_id;
-  unsigned int no_of_items_in_grammar = AIM_Count_of_G (g);
+  int item_id;
+  int no_of_items_in_grammar = AIM_Count_of_G (g);
   duplicates = _marpa_avl_create (AHFA_state_cmp, NULL);
   singleton_duplicates = marpa_new (AHFA, no_of_items_in_grammar);
   for (item_id = 0; item_id < no_of_items_in_grammar; item_id++)
@@ -5650,8 +5677,8 @@ PRIVATE_NOT_INLINE int AHFA_state_cmp(
 
 @ @<Process an AHFA state from the working stack@> =
 {
-  unsigned int no_of_items = p_working_state->t_item_count;
-  unsigned int current_item_ix = 0;
+  int no_of_items = p_working_state->t_item_count;
+  int current_item_ix = 0;
   AIM *item_list;
   NSYID working_nsyid;
   item_list = p_working_state->t_items;
@@ -5674,7 +5701,10 @@ PRIVATE_NOT_INLINE int AHFA_state_cmp(
       no_of_items_in_new_state = current_item_ix - first_working_item_ix;
       if (no_of_items_in_new_state == 1)
         {
-        @<Create a 1-item discovered AHFA state@>@;
+          const AIMID id_of_aim = ID_of_AIM(item_list[first_working_item_ix]+1);
+          const AHFA singleton_ahfa = singleton_duplicates[id_of_aim];
+          MARPA_ASSERT(singleton_ahfa);
+            transition_add (obs_precompute, p_working_state, working_nsyid, singleton_ahfa);
         }
       else
         {
@@ -5706,10 +5736,10 @@ NEXT_AHFA_STATE:;
             {
               int completion_count =
                 Completion_Count_of_TRANS (working_transition);
-              int sizeof_transition =
+              size_t sizeof_transition =
                 offsetof (struct s_transition,
                           t_aex) +
-                completion_count * sizeof (transitions[0]->t_aex[0]);
+                (size_t)completion_count * sizeof (transitions[0]->t_aex[0]);
 
               /* Needs to be aligned as a TRANS */
               TRANS new_transition =
@@ -5772,7 +5802,7 @@ You can get the AIM from the AEX, but not vice versa.
       AIM *aims = AIMs_of_AHFA (from_ahfa);
       int aim_count = AIM_Count_of_AHFA (from_ahfa);
       AEX aex;
-      qsort (aims, aim_count, sizeof (AIM *), cmp_by_aimid);
+      qsort (aims, (size_t)aim_count, sizeof (AIM *), cmp_by_aimid);
       for (aex = 0; aex < aim_count; aex++)
         {
           AIM ahfa_item = aims[aex];
@@ -5796,12 +5826,9 @@ You can get the AIM from the AEX, but not vice versa.
 }
 
 @ @<Free locals for creating AHFA states@> =
-   my_free(irl_by_sort_key);
-    @<Free duplicates data structures@>@;
-
-@ @<Free duplicates data structures@> =
-my_free(singleton_duplicates);
-_marpa_avl_destroy(duplicates);
+  my_free(irl_by_sort_key);
+  my_free(singleton_duplicates);
+  _marpa_avl_destroy(duplicates);
 
 @ @<Construct initial AHFA states@> =
 {
@@ -5814,10 +5841,10 @@ _marpa_avl_destroy(duplicates);
   /* The start item is the initial item for the start rule */
   start_item = First_AIM_of_IRL(start_irl);
   item_list[0] = start_item;
-  AHFA_initialize(p_initial_state);
+  AHFA_initialize(g, p_initial_state);
   p_initial_state->t_items = item_list;
   p_initial_state->t_item_count = 1;
-  p_initial_state->t_key.t_id = 0;
+  singleton_duplicates[0] = p_initial_state;
   AHFA_is_Predicted (p_initial_state) = 0;
   TRANSs_of_AHFA (p_initial_state) = transitions_new (g, nsy_count);
   Postdot_NSY_Count_of_AHFA (p_initial_state) = 1;
@@ -5829,7 +5856,7 @@ _marpa_avl_destroy(duplicates);
     cil_empty (&g->t_cilar);
   p_initial_state->t_empty_transition = create_predicted_AHFA_state (g,
                                matrix_row (prediction_matrix,
-                                           (unsigned int) postdot_nsyid),
+                                           postdot_nsyid),
                                irl_by_sort_key, &states, duplicates,
                                item_list_working_buffer);
 }
@@ -5862,48 +5889,73 @@ Therefore there is only one AHFA state containing
 a start rule completion, and it is a
 1-item discovered AHFA states.
 {\bf QED}.
-@<Create a 1-item discovered AHFA state@> = {
-    AHFA p_new_state;
+@<Function definitions@> =
+PRIVATE AHFA
+create_singleton_AHFA_state(
+    GRAMMAR g,
+    AIM working_aim_p,
+      AHFA* singleton_duplicates,
+    struct marpa_obstack *obs_precompute,
+    AHFA previous_ahfa,
+     IRL* irl_by_sort_key,
+     DQUEUE states_p,
+     MARPA_AVL_TREE duplicates,
+     AIM* item_list_working_buffer,
+   Bit_Matrix prediction_matrix
+)
+{
+  /* \comment Every AHFA has at least one item */
+
+   const AIM AHFA_item_0_p = g->t_AHFA_items;
+    AHFA new_ahfa;
     AIM* new_state_item_list;
-    AIM working_aim_p = item_list[first_working_item_ix];
-    Marpa_AHFA_Item_ID working_aim_id;
     NSYID postdot_nsyid;
-    working_aim_p++;            // Transition to next item for this rule
-    working_aim_id = working_aim_p - AHFA_item_0_p;
-    p_new_state = singleton_duplicates[working_aim_id];
-    if (p_new_state)
+    const Marpa_AHFA_Item_ID working_aim_id = working_aim_p - AHFA_item_0_p;
+
+    MARPA_OFF_DEBUG2("create_singleton_AHFA_state(AIM %d)", working_aim_id);
+
+    const NSYID transition_nsyid = Postdot_NSYID_of_AIM (working_aim_p-1);
+    new_ahfa = singleton_duplicates[working_aim_id]; /* This will not
+    be necessary after transition to singleton-only AHFA states */
+    if (new_ahfa)
       {                         /* Do not add, this is a duplicate */
-        transition_add (obs_precompute, p_working_state, working_nsyid, p_new_state);
-        goto NEXT_WORKING_SYMBOL;
+        if (previous_ahfa) {
+            transition_add (obs_precompute, previous_ahfa, transition_nsyid, new_ahfa);
+        }
+        return new_ahfa;
       }
-    p_new_state = DQUEUE_PUSH (states, AHFA_Object);
+
+    MARPA_OFF_DEBUG2("Creating singleton AHFA for AIM %d", working_aim_id);
+
+    new_ahfa = DQUEUE_PUSH ((*states_p), AHFA_Object);
     /* Create a new AHFA state */
-    AHFA_initialize(p_new_state);
-    singleton_duplicates[working_aim_id] = p_new_state;
-    new_state_item_list = p_new_state->t_items =
+    AHFA_initialize(g, new_ahfa);
+    singleton_duplicates[working_aim_id] = new_ahfa;
+    new_state_item_list = new_ahfa->t_items =
         marpa_obs_new (g->t_obs, AIM, 1);
     new_state_item_list[0] = working_aim_p;
-    p_new_state->t_item_count = 1;
-    AHFA_is_Predicted(p_new_state) = 0;
-    p_new_state->t_key.t_id = p_new_state - DQUEUE_BASE (states, AHFA_Object);
-    TRANSs_of_AHFA(p_new_state) = transitions_new(g, nsy_count);
-    transition_add (obs_precompute, p_working_state, working_nsyid, p_new_state);
+    new_ahfa->t_item_count = 1;
+    AHFA_is_Predicted(new_ahfa) = 0;
+    TRANSs_of_AHFA(new_ahfa) = transitions_new(g, NSY_Count_of_G(g));
+    if (previous_ahfa) {
+      transition_add (obs_precompute, previous_ahfa, transition_nsyid, new_ahfa);
+    }
     postdot_nsyid = Postdot_NSYID_of_AIM(working_aim_p);
     if (postdot_nsyid >= 0)
       {
-        NSYID* p_postdot_nsyidary = Postdot_NSYIDAry_of_AHFA(p_new_state) =
+        NSYID* p_postdot_nsyidary = Postdot_NSYIDAry_of_AHFA(new_ahfa) =
           marpa_obs_new (g->t_obs, NSYID, 1);
-        Completion_CIL_of_AHFA(p_new_state)
+        Completion_CIL_of_AHFA(new_ahfa)
           = cil_empty (&g->t_cilar);
-        Postdot_NSY_Count_of_AHFA(p_new_state) = 1;
+        Postdot_NSY_Count_of_AHFA(new_ahfa) = 1;
         *p_postdot_nsyidary = postdot_nsyid;
     /* If the sole item is not a completion
      attempt to create a predicted AHFA state as well */
-    p_new_state->t_empty_transition =
+    new_ahfa->t_empty_transition =
     create_predicted_AHFA_state (g,
                                  matrix_row (prediction_matrix,
-                                             (unsigned int) postdot_nsyid),
-                                 irl_by_sort_key, &states, duplicates,
+                                             postdot_nsyid),
+                                 irl_by_sort_key, states_p, duplicates,
                                  item_list_working_buffer);
       }
     else
@@ -5911,14 +5963,15 @@ a start rule completion, and it is a
         /* The only AIM is a completion */
         const IRL irl = IRL_of_AIM(working_aim_p);
         const NSYID lhs_nsyid = LHSID_of_IRL(irl);
-        Completion_CIL_of_AHFA(p_new_state) = cil_singleton(&g->t_cilar, lhs_nsyid);
-        completion_count_inc(obs_precompute, p_new_state, lhs_nsyid);
+        Completion_CIL_of_AHFA(new_ahfa) = cil_singleton(&g->t_cilar, lhs_nsyid);
+        completion_count_inc(obs_precompute, new_ahfa, lhs_nsyid);
 
-        Postdot_NSY_Count_of_AHFA(p_new_state) = 0;
-        p_new_state->t_empty_transition = NULL;
+        Postdot_NSY_Count_of_AHFA(new_ahfa) = 0;
+        new_ahfa->t_empty_transition = NULL;
         @<If this state can be a Leo completion,
         set the Leo completion symbol to |lhs_id|@>@;
   }
+  return new_ahfa;
 }
 
 @
@@ -5931,8 +5984,8 @@ set the Leo completion symbol to |lhs_id|@> =
   const IRL aim_irl = IRL_of_AIM (working_aim_p);
   if (IRL_is_Right_Recursive(aim_irl))
     {
-      Leo_LHS_NSYID_of_AHFA (p_new_state) = lhs_nsyid;
-      Leo_IRLID_of_AHFA (p_new_state) = ID_of_IRL(aim_irl);
+      Leo_LHS_NSYID_of_AHFA (new_ahfa) = lhs_nsyid;
+      Leo_IRLID_of_AHFA (new_ahfa) = ID_of_IRL(aim_irl);
     }
 }
 
@@ -6023,8 +6076,8 @@ of minimum sizes.
 @ @<Create a discovered AHFA state with 2+ items@> =
 {
   AHFA p_new_state;
-  unsigned int predecessor_ix;
-  unsigned int no_of_new_items_so_far = 0;
+  int predecessor_ix;
+  int no_of_new_items_so_far = 0;
   AHFA queued_AHFA_state;
   p_new_state = DQUEUE_PUSH (states, AHFA_Object);
   p_new_state->t_item_count = no_of_items_in_new_state;
@@ -6057,7 +6110,6 @@ of minimum sizes.
       goto NEXT_WORKING_SYMBOL;
     }
   // If we added the new state, finish up its data.
-  p_new_state->t_key.t_id = p_new_state - DQUEUE_BASE (states, AHFA_Object);
   {
       int i;
       AIM* const final_aim_list = p_new_state->t_items =
@@ -6066,7 +6118,7 @@ of minimum sizes.
           final_aim_list[i] = item_list_working_buffer[i];
       }
   }
-  AHFA_initialize (p_new_state);
+  AHFA_initialize (g, p_new_state);
   AHFA_is_Predicted (p_new_state) = 0;
   TRANSs_of_AHFA (p_new_state) = transitions_new (g, nsy_count);
   @<Calculate complete and postdot symbols
@@ -6094,25 +6146,25 @@ for discovered state with 2+ items@> =
           completion_count_inc (obs_precompute, p_new_state,
                                 complete_symbol_nsyid);
           bv_bit_set (per_ahfa_complete_v,
-                      (unsigned int) complete_symbol_nsyid);
+                      complete_symbol_nsyid);
         }
       else
         {
-          bv_bit_set (per_ahfa_postdot_v, (unsigned int) postdot_nsyid);
+          bv_bit_set (per_ahfa_postdot_v, postdot_nsyid);
         }
     }
   if ((no_of_postdot_nsys = Postdot_NSY_Count_of_AHFA (p_new_state) =
        bv_count (per_ahfa_postdot_v)))
     {
-      unsigned int min, max, start;
+      int min, max, start;
       NSYID *p_nsyid = Postdot_NSYIDAry_of_AHFA (p_new_state) =
         marpa_obs_new (g->t_obs, NSYID, no_of_postdot_nsys );
       for (start = 0; bv_scan (per_ahfa_postdot_v, start, &min, &max);
            start = max + 2)
         {
           NSYID postdot_nsyid;
-          for (postdot_nsyid = (NSYID) min;
-               postdot_nsyid <= (NSYID) max; postdot_nsyid++)
+          for (postdot_nsyid = min;
+               postdot_nsyid <= max; postdot_nsyid++)
             {
               *p_nsyid++ = postdot_nsyid;
             }
@@ -6220,8 +6272,8 @@ states.
       /* If a symbol appears on a LHS, it predicts itself. */
       NSY nsy = NSY_by_ID (nsyid);
       if (!NSY_is_LHS(nsy)) continue;
-      matrix_bit_set (prediction_nsy_by_nsy_matrix, (unsigned int) nsyid,
-                (unsigned int) nsyid);
+      matrix_bit_set (prediction_nsy_by_nsy_matrix, nsyid,
+                nsyid);
     }
   for (irl_id = 0; irl_id < irl_count; irl_id++)
     {
@@ -6236,8 +6288,8 @@ states.
       /* Set a bit in the matrix */
       from_nsyid = LHS_NSYID_of_AIM (item);
       matrix_bit_set (prediction_nsy_by_nsy_matrix,
-        (unsigned int) from_nsyid,
-        (unsigned int) to_nsyid);
+        from_nsyid,
+        to_nsyid);
     }
 }
 
@@ -6248,7 +6300,7 @@ Specifically, if symbol |S1| predicts symbol |S2|, then symbol |S1|
 predicts every rule
 with |S2| on its LHS.
 @<Create the prediction matrix from the symbol-by-symbol matrix@> = {
-    unsigned int* sort_key_by_irl_id = marpa_new(unsigned int, irl_count);
+    int* sort_key_by_irl_id = marpa_new(int, irl_count);
     @<Populate |irl_by_sort_key|@>@/
     @<Populate |sort_key_by_irl_id| with second pass value@>@/
     @<Populate the prediction matrix@>@/
@@ -6272,7 +6324,7 @@ so that they can be used as the indices of a boolean vector.
     {
       irl_by_sort_key[irl_id] = IRL_by_ID (irl_id);
     }
-  qsort (irl_by_sort_key, (int) irl_count,
+  qsort (irl_by_sort_key, (size_t)irl_count,
          sizeof (RULE), cmp_by_irl_sort_key);
 }
 
@@ -6287,8 +6339,8 @@ cmp_by_irl_sort_key(const void* ap, const void* bp)
 {
   const IRL irl_a = *(IRL *) ap;
   const IRL irl_b = *(IRL *) bp;
-  unsigned int sort_key_a;
-  unsigned int sort_key_b;
+  int sort_key_a;
+  int sort_key_b;
   SET_1ST_PASS_SORT_KEY_FOR_IRL (sort_key_a, irl_a);
   SET_1ST_PASS_SORT_KEY_FOR_IRL (sort_key_b, irl_b);
   if (sort_key_a != sort_key_b)
@@ -6322,14 +6374,14 @@ which can be used to index the rules in a boolean vector.
   for (from_nsyid = 0; from_nsyid < nsy_count; from_nsyid++)
     {
       // for every row of the symbol-by-symbol matrix
-      unsigned int min, max, start;
+      int min, max, start;
       for (start = 0;
            bv_scan (matrix_row
-                    (prediction_nsy_by_nsy_matrix, (unsigned int) from_nsyid),
+                    (prediction_nsy_by_nsy_matrix, from_nsyid),
                     start, &min, &max); start = max + 2)
         {
           NSYID to_nsyid;
-          for (to_nsyid = min; to_nsyid <= (NSYID)max; to_nsyid++)
+          for (to_nsyid = min; to_nsyid <= max; to_nsyid++)
             {
               // for every predicted symbol
               RULEID *p_irl_x_lh_nsy = irl_list_x_lh_nsy[to_nsyid];
@@ -6338,10 +6390,10 @@ which can be used to index the rules in a boolean vector.
                 {
                   // For every rule with that symbol on its LHS
                   const IRLID irl_with_this_lhs = *p_irl_x_lh_nsy;
-                  unsigned int sort_ordinal =
+                  int sort_ordinal =
                     sort_key_by_irl_id[irl_with_this_lhs];
                   matrix_bit_set (prediction_matrix,
-                                  (unsigned int) from_nsyid, sort_ordinal);
+                                  from_nsyid, sort_ordinal);
                   // Set the $(symbol, rule sort key)$ bit in the matrix
                 }
             }
@@ -6366,12 +6418,12 @@ create_predicted_AHFA_state(
   if (no_of_items_in_new_state == 0)
     return NULL;
   {
-    unsigned int start, min, max;
+    int start, min, max;
       // \comment Scan the prediction rule vector again, this time to populate the list
     for (start = 0; bv_scan (prediction_rule_vector, start, &min, &max);
          start = max + 2)
       {
-        unsigned int sort_ordinal;
+        int sort_ordinal;
         for (sort_ordinal = min; sort_ordinal <= max; sort_ordinal++)
           {
             /* Add the initial item for the predicted rule */
@@ -6381,7 +6433,7 @@ create_predicted_AHFA_state(
       }
   }
   p_new_state = DQUEUE_PUSH ((*states_p), AHFA_Object);
-  AHFA_initialize (p_new_state);
+  AHFA_initialize (g, p_new_state);
   p_new_state->t_items = item_list_working_buffer;
   p_new_state->t_item_count = no_of_items_in_new_state;
   {
@@ -6391,12 +6443,11 @@ create_predicted_AHFA_state(
         /* The new state would be a duplicate.
            Back it out and return the one that already exists */
         (void) DQUEUE_POP ((*states_p), AHFA_Object);
+        AHFA_Count_of_G(g)--;
         return queued_AHFA_state;
       }
   }
   // The new state was added -- finish up its data
-  p_new_state->t_key.t_id =
-    p_new_state - DQUEUE_BASE ((*states_p), AHFA_Object);
   {
     int i;
     AIM *const final_aim_list = p_new_state->t_items =
@@ -6425,19 +6476,19 @@ create_predicted_AHFA_state(
         AIM item = item_list_working_buffer[item_ix];
         NSYID postdot_nsyid = Postdot_NSYID_of_AIM (item);
         if (postdot_nsyid >= 0)
-          bv_bit_set (postdot_v, (unsigned int) postdot_nsyid);
+          bv_bit_set (postdot_v, postdot_nsyid);
       }
     if ((no_of_postdot_nsys = Postdot_NSY_Count_of_AHFA(p_new_state) =
      bv_count (postdot_v)))
   {
-    unsigned int min, max, start;
+    int min, max, start;
     NSYID *p_nsyid = Postdot_NSYIDAry_of_AHFA(p_new_state) =
       marpa_obs_new (g->t_obs, NSYID, no_of_postdot_nsys );
     for (start = 0; bv_scan (postdot_v, start, &min, &max); start = max + 2)
       {
         NSYID postdot_nsyid;
-        for (postdot_nsyid = (NSYID) min;
-             postdot_nsyid <= (NSYID) max; postdot_nsyid++)
+        for (postdot_nsyid = min;
+             postdot_nsyid <= max; postdot_nsyid++)
           {
             *p_nsyid++ = postdot_nsyid;
           }
@@ -6607,7 +6658,7 @@ int _marpa_g_AHFA_state_transitions(Marpa_Grammar g,
     XSYID nsyid;
     int nsy_count;
     int ix = 0;
-    const int max_ix = buffer_size / sizeof(*buffer);
+    const int max_ix = buffer_size / (int)sizeof(*buffer);
     const int max_results = max_ix / 2;
     /* Rounding is important -- with 32-bits ints,
       the number of results which fit into 15 bytes is 1.
@@ -6664,7 +6715,7 @@ AHFAID _marpa_g_AHFA_state_empty_transition(Marpa_Grammar g,
           if (nsy)
             {
               bv_bit_set (g->t_bv_nsyid_is_terminal,
-                          (unsigned int) ID_of_NSY (nsy));
+                           ID_of_NSY (nsy));
             }
         }
     }
@@ -6813,8 +6864,8 @@ AHFAID _marpa_g_AHFA_state_empty_transition(Marpa_Grammar g,
             continue;           /* This AHFA is not a Leo completion,
                                    so we are done. */
           if (matrix_bit_test (nsy_by_right_nsy_matrix,
-                               (unsigned int) outer_nsyid,
-                               (unsigned int) inner_nsyid))
+                               outer_nsyid,
+                               inner_nsyid))
             {
               /* |inner_ahfa == outer_ahfa|
               is not treated as special case
@@ -7051,7 +7102,7 @@ r->t_current_earleme = -1;
 @d Current_Earleme_of_R(r) ((r)->t_current_earleme)
 @<Function definitions@> =
 unsigned int marpa_r_current_earleme(Marpa_Recognizer r)
-{ return Current_Earleme_of_R(r); }
+{ return (unsigned int)Current_Earleme_of_R(r); }
 
 @ @d Current_YS_of_R(r) current_ys_of_r(r)
 @<Function definitions@> =
@@ -7097,7 +7148,7 @@ No complete or predicted Earley item will be found after the current earleme.
 @ @<Initialize recognizer elements@> = r->t_furthest_earleme = 0;
 @ @<Function definitions@> =
 unsigned int marpa_r_furthest_earleme(Marpa_Recognizer r)
-{ return Furthest_Earleme_of_R(r); }
+{ return (unsigned int)Furthest_Earleme_of_R(r); }
 
 @*0 Event variables.
 The count of unmasked XSY events.
@@ -7132,7 +7183,7 @@ this boolean vector is initialized to |NULL| so that the destructor
 can tell if there is a boolean vector to be freed.
 @<Widely aligned recognizer elements@> = Bit_Vector t_bv_nsyid_is_expected;
 @ @<Initialize recognizer elements@> = 
-    r->t_bv_nsyid_is_expected = bv_obs_create( r->t_obs, (unsigned int)nsy_count );
+    r->t_bv_nsyid_is_expected = bv_obs_create( r->t_obs, nsy_count );
 @ Returns |-2| if there was a failure.
 The buffer is expected to be large enough to hold
 the result.
@@ -7144,7 +7195,7 @@ int marpa_r_terminals_expected(Marpa_Recognizer r, Marpa_Symbol_ID* buffer)
 {
     @<Return |-2| on failure@>@;
       @<Unpack recognizer objects@>@;
-    unsigned int min, max, start;
+    int min, max, start;
     int ix = 0;
     @<Fail if fatal error@>@;
     @<Fail if recognizer not started@>@;
@@ -7152,7 +7203,7 @@ int marpa_r_terminals_expected(Marpa_Recognizer r, Marpa_Symbol_ID* buffer)
          start = max + 2)
       {
         NSYID nsyid;
-        for (nsyid = (NSYID) min; nsyid <= (NSYID) max; nsyid++)
+        for (nsyid = min; nsyid <= max; nsyid++)
           {
             const XSY xsy = Source_XSY_of_NSYID(nsyid);
             buffer[ix++] = ID_of_XSY(xsy);
@@ -7971,6 +8022,7 @@ I could widen it beyond the current count, but
 a limit of over 64,000 Earley items in a single Earley set
 should not be restrictive in practice.
 @d YIM_ORDINAL_WIDTH 16
+@d YIM_ORDINAL_CLAMP(x) (((1<<(YIM_ORDINAL_WIDTH))-1) & (x))
 @d YIM_FATAL_THRESHOLD ((1<<(YIM_ORDINAL_WIDTH))-2)
 @<Earley item structure@> =
 struct s_earley_item_key {
@@ -8009,7 +8061,7 @@ PRIVATE YIM earley_item_create(const RECCE r,
   new_item->t_key = key;
   new_item->t_source_type = NO_SOURCE;
   new_item->t_rejected = 0;
-  Ord_of_YIM(new_item) = count - 1;
+  Ord_of_YIM(new_item) = YIM_ORDINAL_CLAMP((unsigned int)count - 1);
   end_of_work_stack = WORK_YIM_PUSH(r);
   *end_of_work_stack = new_item;
   return new_item;
@@ -9921,7 +9973,7 @@ PRIVATE void trigger_events(RECCE r)
 {
   const GRAMMAR g = G_of_R (r);
   const YS current_earley_set = Latest_YS_of_R (r);
-  unsigned int min, max, start;
+  int min, max, start;
   int yim_ix;
   struct marpa_obstack *const trigger_events_obs = marpa_obs_init;
   const YIM *yims = YIMs_of_YS (current_earley_set);
@@ -10014,7 +10066,7 @@ PRIVATE void trigger_events(RECCE r)
        start = max + 2)
     {
       XSYID event_xsyid;
-      for (event_xsyid = (NSYID) min; event_xsyid <= (NSYID) max;
+      for (event_xsyid = min; event_xsyid <= max;
            event_xsyid++)
         {
           if (lbv_bit_test
@@ -10028,7 +10080,7 @@ PRIVATE void trigger_events(RECCE r)
        start = max + 2)
     {
       XSYID event_xsyid;
-      for (event_xsyid = (NSYID) min; event_xsyid <= (NSYID) max;
+      for (event_xsyid = min; event_xsyid <= max;
            event_xsyid++)
         {
           if (lbv_bit_test
@@ -10232,12 +10284,12 @@ At this point there are no Leo items.
           nsyid = postdot_nsyidary[nsy_ix];
           Postdot_NSYID_of_PIM(new_pim) = nsyid;
           YIM_of_PIM(new_pim) = earley_item;
-          if (bv_bit_test(r->t_bv_pim_symbols, (unsigned int)nsyid))
+          if (bv_bit_test(r->t_bv_pim_symbols, nsyid))
               old_pim = r->t_pim_workarea[nsyid];
           Next_PIM_of_PIM(new_pim) = old_pim;
           if (!old_pim) current_earley_set->t_postdot_sym_count++;
           r->t_pim_workarea[nsyid] = new_pim;
-          bv_bit_set(r->t_bv_pim_symbols, (unsigned int)nsyid);
+          bv_bit_set(r->t_bv_pim_symbols, nsyid);
         }
     }
 }
@@ -10257,7 +10309,7 @@ Leo item have not been fully populated.
 @d LIM_is_Populated(leo) (Origin_of_LIM(leo) != NULL)
 @<Start LIMs in PIM workarea@> =
 {
-  unsigned int min, max, start;
+  int min, max, start;
   for (start = 0; bv_scan (r->t_bv_pim_symbols, start, &min, &max);
        start = max + 2)
     {
@@ -10302,7 +10354,7 @@ once it is populated.
     YS_of_LIM(new_lim) = current_earley_set;
     Next_PIM_of_LIM(new_lim) = this_pim;
     r->t_pim_workarea[nsyid] = new_lim;
-    bv_bit_set(r->t_bv_lim_symbols, (unsigned int)nsyid);
+    bv_bit_set(r->t_bv_lim_symbols, nsyid);
 }
 
 @ This code fully populates the data in the LIMs.
@@ -10375,7 +10427,7 @@ ID must
 \li Must not have already been added to a LIM chain for this
 Earley set.\par
 @<Add predecessors to LIMs@> = {
-  unsigned int min, max, start;
+  int min, max, start;
 
   bv_copy(bv_ok_for_chain, r->t_bv_lim_symbols);
   for (start = 0; bv_scan (r->t_bv_lim_symbols, start, &min, &max);
@@ -10486,7 +10538,7 @@ problems.
   lim_chain_ix = 0;
   r->t_lim_chain[lim_chain_ix++] = LIM_of_PIM (lim_to_process);
   bv_bit_clear (bv_ok_for_chain,
-                (unsigned int) postdot_nsyid_of_lim_to_process);
+                postdot_nsyid_of_lim_to_process);
   /* Make sure this LIM
      is not added to a LIM chain again for this Earley set */
   while (1)
@@ -10501,7 +10553,7 @@ problems.
       lim_to_process = predecessor_lim;
       postdot_nsyid_of_lim_to_process = Postdot_NSYID_of_LIM (lim_to_process);
       if (!bv_bit_test
-          (bv_ok_for_chain, (unsigned int) postdot_nsyid_of_lim_to_process))
+          (bv_ok_for_chain, postdot_nsyid_of_lim_to_process))
         {
           /* If I am about to add a previously added LIM to the LIM chain, I
              break the LIM chain at this point.
@@ -10517,7 +10569,7 @@ problems.
       /* |lim_to_process| is not populated, as shown above */
 
       bv_bit_clear (bv_ok_for_chain,
-                    (unsigned int) postdot_nsyid_of_lim_to_process);
+                    postdot_nsyid_of_lim_to_process);
       /* Make sure this LIM
          is not added to a LIM chain again for this Earley set */
         /* \comment |predecesssor_lim = NULL|,
@@ -10604,11 +10656,11 @@ of the base YIM.
     PIM *postdot_array
         = current_earley_set->t_postdot_ary
         = marpa_obs_new (r->t_obs, PIM, current_earley_set->t_postdot_sym_count );
-    unsigned int min, max, start;
+    int min, max, start;
     int postdot_array_ix = 0;
     for (start = 0; bv_scan (r->t_bv_pim_symbols, start, &min, &max); start = max + 2) {
         NSYID nsyid;
-        for (nsyid = (NSYID)min; nsyid <= (NSYID) max; nsyid++) {
+        for (nsyid = min; nsyid <= max; nsyid++) {
             PIM this_pim = r->t_pim_workarea[nsyid];
             if (lbv_bit_test(r->t_nsy_expected_is_event, nsyid)) {
               XSY xsy = Source_XSY_of_NSYID(nsyid);
@@ -12509,7 +12561,7 @@ int marpa_r_progress_report_start(
         @<Do the progress report for |earley_item|@>@;
       }
     r->t_progress_report_traverser = _marpa_avl_t_init(report_tree);
-    return marpa_avl_count (report_tree);
+    return (int)marpa_avl_count (report_tree);
   }
 }
 @ Start the progress report again.
@@ -12828,21 +12880,21 @@ struct s_bocage_setup_per_ys* per_ys_data = NULL;
 @
 @<Allocate bocage setup working data@>=
 {
-  unsigned int ix;
-  unsigned int earley_set_count = YS_Count_of_R (r);
+  int ix;
+  int earley_set_count = YS_Count_of_R (r);
   count_of_earley_items_in_parse = 0;
   per_ys_data =
     marpa_obs_new (bocage_setup_obs, struct s_bocage_setup_per_ys, earley_set_count);
   for (ix = 0; ix < earley_set_count; ix++)
     {
       const YS_Const earley_set = YS_of_R_by_Ord (r, ix);
-      const unsigned int item_count = YIM_Count_of_YS (earley_set);
+      const int item_count = YIM_Count_of_YS (earley_set);
       count_of_earley_items_in_parse += item_count;
         {
           struct s_bocage_setup_per_ys *per_ys = per_ys_data + ix;
           OR ** const per_yim_yixes = per_ys->t_aexes_by_item =
             marpa_obs_new (bocage_setup_obs, OR *, item_count);
-          unsigned int item_ordinal;
+          int item_ordinal;
           per_ys->t_or_psl = NULL;
           per_ys->t_and_psl = NULL;
           for (item_ordinal = 0; item_ordinal < item_count; item_ordinal++)
@@ -13284,7 +13336,9 @@ int marpa_o_rank( Marpa_Order o)
       const ANDID last_and_node_id =
         (first_and_node_id + and_count_of_or) - 1;
       ANDID *const order_base =
-        marpa_obs_start (obs, sizeof (ANDID) * (and_count_of_or + 1), ALIGNOF(ANDID));
+        marpa_obs_start (obs,
+          sizeof (ANDID) * ((size_t)and_count_of_or + 1),
+                       ALIGNOF (ANDID));
       ANDID *order = order_base + 1;
       ANDID and_node_id;
       bocage_was_reordered = 1;
@@ -13306,7 +13360,7 @@ int marpa_o_rank( Marpa_Order o)
         int final_count = (order - order_base) - 1;
         *order_base = final_count;
         ambiguity_metric = MAX (ambiguity_metric, final_count);
-        marpa_obs_confirm_fast (obs, sizeof (ANDID) * (final_count + 1));
+        marpa_obs_confirm_fast (obs, (int)sizeof (ANDID) * (final_count + 1));
         and_node_orderings[or_node_id] = marpa_obs_finish (obs);
       }
     }
@@ -13563,7 +13617,7 @@ Marpa_Tree marpa_t_new(Marpa_Order o)
       const int and_count = AND_Count_of_B (b);
       const int or_count = OR_Count_of_B (b);
       T_is_Nulling (t) = 0;
-      t->t_or_node_in_use = bv_create ((unsigned int) or_count);
+      t->t_or_node_in_use = bv_create (or_count);
       FSTACK_INIT (t->t_nook_stack, NOOK_Object, and_count);
       FSTACK_INIT (t->t_nook_worklist, int, and_count);
     }
@@ -13742,13 +13796,13 @@ set the bit) and return 1.
 @<Function definitions@> =
 PRIVATE int tree_or_node_try(TREE tree, ORID or_node_id)
 {
-    return !bv_bit_test_then_set(tree->t_or_node_in_use, (unsigned int)or_node_id);
+    return !bv_bit_test_then_set(tree->t_or_node_in_use, or_node_id);
 }
 @ Release the and-node by unsetting its bit.
 @<Function definitions@> =
 PRIVATE void tree_or_node_release(TREE tree, ORID or_node_id)
 {
-    bv_bit_clear(tree->t_or_node_in_use, (unsigned int)or_node_id);
+    bv_bit_clear(tree->t_or_node_in_use, or_node_id);
 }
 
 @*0 Iterating the tree.
@@ -13884,19 +13938,21 @@ Otherwise, the tree is exhausted.
 
 @ @<Add new nook to tree@> =
 {
-   NOOKID new_nook_id = Size_of_T(t);
-   NOOK new_nook = FSTACK_PUSH(t->t_nook_stack);
-    *(FSTACK_PUSH(t->t_nook_worklist)) = new_nook_id;
-    Parent_of_NOOK(new_nook) = *p_work_nook_id;
-    Choice_of_NOOK(new_nook) = choice;
-    OR_of_NOOK(new_nook) = child_or_node;
-    NOOK_Cause_is_Expanded(new_nook) = 0;
-    if ( ( NOOK_is_Cause(new_nook) = child_is_cause ) ) {
-        NOOK_Cause_is_Expanded(work_nook) = 1;
+  NOOKID new_nook_id = Size_of_T (t);
+  NOOK new_nook = FSTACK_PUSH (t->t_nook_stack);
+  *(FSTACK_PUSH (t->t_nook_worklist)) = new_nook_id;
+  Parent_of_NOOK (new_nook) = *p_work_nook_id;
+  Choice_of_NOOK (new_nook) = choice;
+  OR_of_NOOK (new_nook) = child_or_node;
+  NOOK_Cause_is_Expanded (new_nook) = 0;
+  if ((NOOK_is_Cause (new_nook) = Boolean (child_is_cause)))
+    {
+      NOOK_Cause_is_Expanded (work_nook) = 1;
     }
-    NOOK_Predecessor_is_Expanded(new_nook) = 0;
-    if ( ( NOOK_is_Predecessor(new_nook) = child_is_predecessor ) ) {
-        NOOK_Predecessor_is_Expanded(work_nook) = 1;
+  NOOK_Predecessor_is_Expanded (new_nook) = 0;
+  if ((NOOK_is_Predecessor (new_nook) = Boolean (child_is_predecessor)))
+    {
+      NOOK_Predecessor_is_Expanded (work_nook) = 1;
     }
 }
 
@@ -14329,7 +14385,7 @@ int _marpa_v_trace(Marpa_Value public_v, int flag)
       MARPA_ERROR(MARPA_ERR_VALUATOR_INACTIVE);
       return failure_indicator;
     }
-    V_is_Trace(v) = flag;
+    V_is_Trace(v) = Boolean(flag);
     return 1;
 }
 
@@ -14741,7 +14797,8 @@ typedef LBW* LBV;
 @<Function definitions@> =
 PRIVATE int lbv_bits_to_size(int bits)
 {
-    return (bits+(lbv_wordbits-1))/lbv_wordbits;
+  const LBW result = ((LBW) bits + (lbv_wordbits - 1)) / lbv_wordbits;
+  return (int) result;
 }
 
 @*0 Create an unitialized LBV on an obstack.
@@ -14780,11 +14837,11 @@ lbv_obs_new0 (struct marpa_obstack *obs, int bits)
 @d lbv_w(lbv, bit) ((lbv)+((bit)/lbv_wordbits))
 @d lbv_b(bit) (lbv_lsb << ((bit)%bv_wordbits))
 @d lbv_bit_set(lbv, bit)
-  (*lbv_w ((lbv), (bit)) |= lbv_b (bit))
+  (*lbv_w ((lbv), (LBW)(bit)) |= lbv_b ((LBW)(bit)))
 @d lbv_bit_clear(lbv, bit)
-  (*lbv_w ((lbv), (bit)) &= ~lbv_b (bit))
+  (*lbv_w ((lbv), ((LBW)(bit))) &= ~lbv_b ((LBW)(bit)))
 @d lbv_bit_test(lbv, bit)
-  ((*lbv_w ((lbv), (bit)) & lbv_b (bit)) != 0U)
+  ((*lbv_w ((lbv), ((LBW)(bit))) & lbv_b ((LBW)(bit))) != 0U)
 
 @*0 Clone an LBV onto an obstack.
 @<Function definitions@> =
@@ -14840,16 +14897,16 @@ static const unsigned int bv_msb = lbv_msb;
 
 @ Given a number of bits, compute the size.
 @<Function definitions@> =
-PRIVATE unsigned int bv_bits_to_size(unsigned int bits)
+PRIVATE unsigned int bv_bits_to_size(int bits)
 {
-    return (bits+bv_modmask)/bv_wordbits;
+    return ((LBW)bits+bv_modmask)/bv_wordbits;
 }
 @ Given a number of bits, compute the unused-bit mask.
 @<Function definitions@> =
-PRIVATE unsigned int bv_bits_to_unused_mask(unsigned int bits)
+PRIVATE unsigned int bv_bits_to_unused_mask(int bits)
 {
-    unsigned int mask = bits & bv_modmask;
-    if (mask) mask = (unsigned int) ~(~0uL << mask); else mask = (unsigned int) ~0uL;
+    LBW mask = (LBW)bits & bv_modmask;
+    if (mask) mask = (LBW) ~(~0uL << mask); else mask = (LBW) ~0uL;
     return(mask);
 }
 
@@ -14860,12 +14917,12 @@ the pointer returned is to the data.
 This is offset from the |malloc|'d space,
 by |bv_hiddenwords|.
 @<Function definitions@> =
-PRIVATE Bit_Vector bv_create(unsigned int bits)
+PRIVATE Bit_Vector bv_create(int bits)
 {
-    unsigned int size = bv_bits_to_size(bits);
-    unsigned int bytes = (size + bv_hiddenwords) * sizeof(Bit_Vector_Word);
-    unsigned int* addr = (Bit_Vector) my_malloc0((size_t) bytes);
-    *addr++ = bits;
+    LBW size = bv_bits_to_size(bits);
+    LBW bytes = (size + bv_hiddenwords) * sizeof(Bit_Vector_Word);
+    LBW* addr = (Bit_Vector) my_malloc0((size_t) bytes);
+    *addr++ = (LBW)bits;
     *addr++ = size;
     *addr++ = bv_bits_to_unused_mask(bits);
     return addr;
@@ -14879,12 +14936,12 @@ This is offset from the |malloc|'d space,
 by |bv_hiddenwords|.
 @<Function definitions@> =
 PRIVATE Bit_Vector
-bv_obs_create (struct marpa_obstack *obs, LBW bits)
+bv_obs_create (struct marpa_obstack *obs, int bits)
 {
   LBW size = bv_bits_to_size (bits);
   LBW bytes = (size + bv_hiddenwords) * sizeof (Bit_Vector_Word);
   LBW *addr = (Bit_Vector) marpa__obs_alloc (obs, (size_t) bytes, ALIGNOF(LBW));
-  *addr++ = bits;
+  *addr++ = (LBW)bits;
   *addr++ = size;
   *addr++ = bv_bits_to_unused_mask (bits);
   if (size > 0) {
@@ -14901,11 +14958,11 @@ all bits unset.
 @<Function definitions@> =
 PRIVATE Bit_Vector bv_shadow(Bit_Vector bv)
 {
-    return bv_create(BV_BITS(bv));
+    return bv_create((int)BV_BITS(bv));
 }
 PRIVATE Bit_Vector bv_obs_shadow(struct marpa_obstack * obs, Bit_Vector bv)
 {
-    return bv_obs_create(obs, BV_BITS(bv));
+    return bv_obs_create(obs, (int)BV_BITS(bv));
 }
 
 @*0 Clone a boolean vector.
@@ -14920,7 +14977,7 @@ Bit_Vector bv_copy(Bit_Vector bv_to, Bit_Vector bv_from)
     const LBW bits = BV_BITS(bv_to);
     if (bits > 0)
     {
-        int count = BV_SIZE(bv_to);
+        LBW count = BV_SIZE(bv_to);
         while (count--) *p_to++ = *bv_from++;
     }
     return(bv_to);
@@ -14981,31 +15038,35 @@ than an interval clear, at the expense of often
 clearing more bits than were requested.
 In some situations clearing the extra bits is OK.
 @ @<Function definitions@> =
-PRIVATE void bv_over_clear(Bit_Vector bv, LBW bit)
+PRIVATE void bv_over_clear(Bit_Vector bv, int raw_bit)
 {
-    LBW length = bit/bv_wordbits+1;
-    while (length--) *bv++ = 0u;
+  const LBW bit = (LBW)raw_bit;
+  LBW length = bit/bv_wordbits+1;
+  while (length--) *bv++ = 0u;
 }
 
 @*0 Set a boolean vector bit.
 @ @<Function definitions@> =
-PRIVATE void bv_bit_set(Bit_Vector vector, LBW bit)
+PRIVATE void bv_bit_set(Bit_Vector vector, int raw_bit)
 {
-    *(vector+(bit/bv_wordbits)) |= (bv_lsb << (bit%bv_wordbits));
+  const LBW bit = (LBW)raw_bit;
+  *(vector+(bit/bv_wordbits)) |= (bv_lsb << (bit%bv_wordbits));
 }
 
 @*0 Clear a boolean vector bit.
 @<Function definitions@> =
-PRIVATE void bv_bit_clear(Bit_Vector vector, LBW bit)
+PRIVATE void bv_bit_clear(Bit_Vector vector, int raw_bit)
 {
-    *(vector+(bit/bv_wordbits)) &= ~ (bv_lsb << (bit%bv_wordbits));
+  const LBW bit = (LBW)raw_bit;
+  *(vector+(bit/bv_wordbits)) &= ~ (bv_lsb << (bit%bv_wordbits));
 }
 
 @*0 Test a boolean vector bit.
 @<Function definitions@> =
-PRIVATE int bv_bit_test(Bit_Vector vector, LBW bit)
+PRIVATE int bv_bit_test(Bit_Vector vector, int raw_bit)
 {
-    return (*(vector+(bit/bv_wordbits)) & (bv_lsb << (bit%bv_wordbits))) != 0u;
+  const LBW bit = (LBW)raw_bit;
+  return (*(vector+(bit/bv_wordbits)) & (bv_lsb << (bit%bv_wordbits))) != 0u;
 }
 
 @*0 Test and set a boolean vector bit.
@@ -15015,8 +15076,9 @@ so that the return value is 1 if the call had no effect,
 zero otherwise.
 @<Function definitions@> =
 PRIVATE int
-bv_bit_test_then_set (Bit_Vector vector, LBW bit)
+bv_bit_test_then_set (Bit_Vector vector, int raw_bit)
 {
+  const LBW bit = (LBW)raw_bit;
   Bit_Vector addr = vector + (bit / bv_wordbits);
   LBW mask = bv_lsb << (bit % bv_wordbits);
   if ((*addr & mask) != 0u)
@@ -15082,8 +15144,11 @@ PRIVATE void bv_or_assign(Bit_Vector X, Bit_Vector Y)
 @*0 Scan a boolean vector.
 @<Function definitions@>=
 PRIVATE_NOT_INLINE
-int bv_scan(Bit_Vector bv, LBW start, LBW* min, LBW* max)
+int bv_scan(Bit_Vector bv, int raw_start, int* raw_min, int* raw_max)
 {
+    LBW start = (LBW)raw_start;
+    LBW min;
+    LBW max;
     LBW  size = BV_SIZE(bv);
     LBW  mask = BV_MASK(bv);
     LBW  offset;
@@ -15093,8 +15158,8 @@ int bv_scan(Bit_Vector bv, LBW start, LBW* min, LBW* max)
 
     if (size == 0) return 0;
     if (start >= BV_BITS(bv)) return 0;
-    *min = start;
-    *max = start;
+    min = start;
+    max = start;
     offset = start / bv_wordbits;
     *(bv+size-1) &= mask;
     bv += offset;
@@ -15113,7 +15178,11 @@ int bv_scan(Bit_Vector bv, LBW start, LBW* min, LBW* max)
             {
                 if ((value = *bv++)) empty = 0; else offset++;
             }
-            if (empty) return 0;
+            if (empty) {
+              *raw_min = (int)min;
+              *raw_max = (int)max;
+              return 0;
+            }
         }
         start = offset * bv_wordbits;
         bitmask = bv_lsb;
@@ -15125,8 +15194,8 @@ int bv_scan(Bit_Vector bv, LBW start, LBW* min, LBW* max)
             start++;
         }
         mask = ~ (bitmask | (bitmask - 1));
-        *min = start;
-        *max = start;
+        min = start;
+        max = start;
     }
     value = ~ value;
     value &= mask;
@@ -15146,17 +15215,19 @@ int bv_scan(Bit_Vector bv, LBW start, LBW* min, LBW* max)
         value >>= 1;
         start++;
     }
-    *max = --start;
+    max = --start;
+    *raw_min = (int)min;
+    *raw_max = (int)max;
     return 1;
 }
 
 @*0 Count the bits in a boolean vector.
 @<Function definitions@>=
-PRIVATE LBW
+PRIVATE int
 bv_count (Bit_Vector v)
 {
-  LBW start, min, max;
-  LBW count = 0;
+  int start, min, max;
+  int count = 0;
   for (start = 0; bv_scan (v, start, &min, &max); start = max + 2)
     {
       count += max - min + 1;
@@ -15203,13 +15274,13 @@ The orignal vector is destroyed.
 PRIVATE void
 rhs_closure (GRAMMAR g, Bit_Vector bv, XRLID ** xrl_list_x_rh_sym)
 {
-  LBW min, max, start = 0;
+  int min, max, start = 0;
   Marpa_Symbol_ID *end_of_stack = NULL;
   FSTACK_DECLARE (stack, XSYID) @;
   FSTACK_INIT (stack, XSYID, XSY_Count_of_G (g));
   while (bv_scan (bv, start, &min, &max))
     {
-      LBW xsy_id;
+      XSYID xsy_id;
       for (xsy_id = min; xsy_id <= max; xsy_id++)
         {
           *(FSTACK_PUSH (stack)) = xsy_id;
@@ -15231,7 +15302,7 @@ rhs_closure (GRAMMAR g, Bit_Vector bv, XRLID ** xrl_list_x_rh_sym)
 
           const int is_sequence = XRL_is_Sequence (rule);
 
-          if (bv_bit_test (bv, (LBW) lhs_id))
+          if (bv_bit_test (bv, lhs_id))
             goto NEXT_RULE;
           rule_length = Length_of_XRL (rule);
 
@@ -15243,7 +15314,7 @@ rhs_closure (GRAMMAR g, Bit_Vector bv, XRLID ** xrl_list_x_rh_sym)
           for (rh_ix = 0; rh_ix < rule_length; rh_ix++)
             {
               if (!bv_bit_test
-                  (bv, (LBW) RHS_ID_of_XRL (rule, rh_ix)))
+                  (bv, RHS_ID_of_XRL (rule, rh_ix)))
                 goto NEXT_RULE;
             }
 
@@ -15256,7 +15327,7 @@ rhs_closure (GRAMMAR g, Bit_Vector bv, XRLID ** xrl_list_x_rh_sym)
               XSYID separator_id = Separator_of_XRL (rule);
               if (separator_id >= 0)
                 {
-                  if (!bv_bit_test (bv, (LBW) separator_id))
+                  if (!bv_bit_test (bv, separator_id))
                     goto NEXT_RULE;
                 }
             }
@@ -15264,7 +15335,7 @@ rhs_closure (GRAMMAR g, Bit_Vector bv, XRLID ** xrl_list_x_rh_sym)
           /* If I am here, the bits for the RHS symbols are all
            * set, but the one for the LHS symbol is not.
            */
-          bv_bit_set (bv, (LBW) lhs_id);
+          bv_bit_set (bv, lhs_id);
           *(FSTACK_PUSH (stack)) = lhs_id;
         NEXT_RULE:;
         }
@@ -15308,19 +15379,19 @@ This is {\bf not} the case with vectors, whose pointer is offset for
 the ``hidden words".
 @<Function definitions@> =
 PRIVATE Bit_Matrix
-matrix_buffer_create (void *buffer, LBW rows, LBW columns)
+matrix_buffer_create (void *buffer, int rows, int columns)
 {
-    LBW row;
+    int row;
     const LBW bv_data_words = bv_bits_to_size(columns);
     const LBW bv_mask = bv_bits_to_unused_mask(columns);
 
     Bit_Matrix matrix_addr = buffer;
     matrix_addr->t_row_count = rows;
     for (row = 0; row < rows; row++) {
-        const LBW row_start = row*(bv_data_words+bv_hiddenwords);
-        Bit_Vector_Word* p_current_word = matrix_addr->t_row_data + row_start;
-        int data_word_counter = bv_data_words;
-        *p_current_word++ = columns;
+        const LBW row_start = (LBW)row*(bv_data_words+bv_hiddenwords);
+        LBW* p_current_word = matrix_addr->t_row_data + row_start;
+        LBW data_word_counter = bv_data_words;
+        *p_current_word++ = (LBW)columns;
         *p_current_word++ = bv_data_words;
         *p_current_word++ = bv_mask;
         while (data_word_counter--) *p_current_word++ = 0;
@@ -15330,20 +15401,20 @@ matrix_buffer_create (void *buffer, LBW rows, LBW columns)
 
 @*0 Size a boolean matrix in bytes.
 @ @<Function definitions@> =
-PRIVATE size_t matrix_sizeof(LBW rows, LBW columns)
+PRIVATE size_t matrix_sizeof(int rows, int columns)
 {
   const LBW bv_data_words = bv_bits_to_size (columns);
   const LBW row_bytes =
     (bv_data_words + bv_hiddenwords) * sizeof (Bit_Vector_Word);
-  return offsetof (struct s_bit_matrix, t_row_data) +(rows) * row_bytes;
+  return offsetof (struct s_bit_matrix, t_row_data) +((size_t)rows) * row_bytes;
 }
 
 @*0 Create a boolean matrix on an obstack.
 @ @<Function definitions@> =
 PRIVATE Bit_Matrix matrix_obs_create(
   struct marpa_obstack *obs,
-  LBW rows,
-  LBW columns)
+  int rows,
+  int columns)
 {
   /* Needs to be aligned as a |Bit_Matrix_Object| */
   Bit_Matrix matrix_addr =
@@ -15378,7 +15449,7 @@ idea internally of how many rows it has.
 PRIVATE int matrix_columns(Bit_Matrix matrix)
 {
     Bit_Vector row0 = matrix->t_row_data + bv_hiddenwords;
-    return BV_BITS(row0);
+    return (int)BV_BITS(row0);
 }
 
 @*0 Find a row of a boolean matrix.
@@ -15391,16 +15462,16 @@ If it is changed, the vector should be cloned.
 There is a bit of arithmetic, to deal with the
 hidden words offset.
 @<Function definitions@> =
-PRIVATE Bit_Vector matrix_row(Bit_Matrix matrix, LBW row)
+PRIVATE Bit_Vector matrix_row(Bit_Matrix matrix, int row)
 {
     Bit_Vector row0 = matrix->t_row_data + bv_hiddenwords;
     LBW words_per_row = BV_SIZE(row0)+bv_hiddenwords;
-    return row0 + row*words_per_row;
+    return row0 + (LBW)row*words_per_row;
 }
 
 @*0 Set a boolean matrix bit.
 @ @<Function definitions@> =
-PRIVATE void matrix_bit_set(Bit_Matrix matrix, LBW row, LBW column)
+PRIVATE void matrix_bit_set(Bit_Matrix matrix, int row, int column)
 {
     Bit_Vector vector = matrix_row(matrix, row);
     bv_bit_set(vector, column);
@@ -15408,7 +15479,7 @@ PRIVATE void matrix_bit_set(Bit_Matrix matrix, LBW row, LBW column)
 
 @*0 Clear a boolean matrix bit.
 @ @<Function definitions@> =
-PRIVATE void matrix_bit_clear(Bit_Matrix matrix, LBW row, LBW column)
+PRIVATE void matrix_bit_clear(Bit_Matrix matrix, int row, int column)
 {
     Bit_Vector vector = matrix_row(matrix, row);
     bv_bit_clear(vector, column);
@@ -15416,7 +15487,7 @@ PRIVATE void matrix_bit_clear(Bit_Matrix matrix, LBW row, LBW column)
 
 @*0 Test a boolean matrix bit.
 @ @<Function definitions@> =
-PRIVATE int matrix_bit_test(Bit_Matrix matrix, LBW row, LBW column)
+PRIVATE int matrix_bit_test(Bit_Matrix matrix, int row, int column)
 {
     Bit_Vector vector = matrix_row(matrix, row);
     return bv_bit_test(vector, column);
@@ -15435,16 +15506,16 @@ $O(n^3)$ where the matrix is $n$x$n$.
 @<Function definitions@> =
 PRIVATE_NOT_INLINE void transitive_closure(Bit_Matrix matrix)
 {
-  LBW size = matrix_columns (matrix);
-  LBW outer_row;
+  int size = matrix_columns (matrix);
+  int outer_row;
   for (outer_row = 0; outer_row < size; outer_row++)
     {
       Bit_Vector outer_row_v = matrix_row (matrix, outer_row);
-      LBW column;
+      int column;
       for (column = 0; column < size; column++)
         {
           Bit_Vector inner_row_v = matrix_row (matrix, column);
-          if (bv_bit_test (inner_row_v, (LBW) outer_row))
+          if (bv_bit_test (inner_row_v, outer_row))
             {
               bv_or_assign (inner_row_v, outer_row_v);
             }
@@ -15662,12 +15733,12 @@ so its current contents will be destroyed.
 @<Function definitions@> =
 PRIVATE CIL cil_bv_add(CILAR cilar, Bit_Vector bv)
 {
-  LBW min, max, start = 0;
+  int min, max, start = 0;
   cil_buffer_clear (cilar);
   for (start = 0; bv_scan (bv, start, &min, &max); start = max + 2)
     {
       int new_item;
-      for (new_item = (int) min; new_item <= (int) max; new_item++)
+      for (new_item = min; new_item <= max; new_item++)
         {
           cil_buffer_push (cilar, new_item);
         }
@@ -15899,7 +15970,7 @@ when deallocating.
 struct s_per_earley_set_list;
 typedef struct s_per_earley_set_list *PSL;
 @ @d Sizeof_PSL(psar)
-    (sizeof(PSL_Object) + (psar->t_psl_length - 1) * sizeof(void *))
+    (sizeof(PSL_Object) + ((size_t)psar->t_psl_length - 1) * sizeof(void *))
 @d PSL_Datum(psl, i) ((psl)->t_data[(i)])
 @<Private structures@> =
 struct s_per_earley_set_list {

@@ -232,9 +232,9 @@ my_realloc(void *p, size_t size)
 }
 
 @
-@d marpa_new(type, count) ((type *)my_malloc((sizeof(type)*(count))))
+@d marpa_new(type, count) ((type *)my_malloc((sizeof(type)*((size_t)(count)))))
 @d marpa_renew(type, p, count) 
-    ((type *)my_realloc((p), (sizeof(type)*(count))))
+    ((type *)my_realloc((p), (sizeof(type)*((size_t)(count)))))
 
 @** Dynamic stacks.
 |libmarpa| uses stacks and worklists extensively.
@@ -313,7 +313,7 @@ typedef struct marpa_dstack_s* MARPA_DSTACK;
 @ @<Friend structures@> =
 struct marpa_dstack_s { int t_count; int t_capacity; void * t_base; };
 @ @<Friend static inline functions@> =
-static inline void * marpa_dstack_resize2(struct marpa_dstack_s* this, size_t type_bytes)
+static inline void * marpa_dstack_resize2(struct marpa_dstack_s* this, int type_bytes)
 {
     return marpa_dstack_resize(this, type_bytes, this->t_capacity*2);
 }
@@ -323,14 +323,14 @@ static inline void * marpa_dstack_resize2(struct marpa_dstack_s* this, size_t ty
   (marpa_dstack_resize((this), sizeof(type), (new_size)))
 @ @<Friend static inline functions@> =
 static inline void *
-marpa_dstack_resize (struct marpa_dstack_s *this, size_t type_bytes,
+marpa_dstack_resize (struct marpa_dstack_s *this, int type_bytes,
                      int new_size)
 {
   if (new_size > this->t_capacity)
     {                           /* We do not shrink the stack
                                    in this method */
       this->t_capacity = new_size;
-      this->t_base = my_realloc (this->t_base, new_size * type_bytes);
+      this->t_base = my_realloc (this->t_base, (size_t)new_size * (size_t)type_bytes);
     }
   return this->t_base;
 }
@@ -451,6 +451,8 @@ int marpa__default_debug_handler (const char *format, ...)
 @** Internal typdefs.
 @<Internal typedefs@> =
 typedef unsigned int BITFIELD;
+@<Internal macros@>
+#define Boolean(value) ((value) ? 1 : 0)
 
 @** File layout.  
 @ The output files are written in pieces,
