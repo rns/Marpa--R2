@@ -2285,7 +2285,7 @@ slr_es_span_to_literal_sv (Scanless_R * slr,
 
 #define EXPECTED_LIBMARPA_MAJOR 5
 #define EXPECTED_LIBMARPA_MINOR 179
-#define EXPECTED_LIBMARPA_MICRO 109
+#define EXPECTED_LIBMARPA_MICRO 110
 
 MODULE = Marpa::R2        PACKAGE = Marpa::R2::Thin
 
@@ -4134,24 +4134,6 @@ PPCODE:
   if (result)
     XSRETURN_YES;
   XSRETURN_NO;
-}
-
-void
-_marpa_g_AHFA_state_leo_lhs_symbol( g_wrapper, AHFA_state_id )
-    G_Wrapper *g_wrapper;
-    Marpa_AHFA_State_ID AHFA_state_id;
-PPCODE:
-{
-  Marpa_Grammar g = g_wrapper->g;
-  int result = _marpa_g_AHFA_state_leo_lhs_symbol (g, AHFA_state_id);
-  if (result == -1)
-    XSRETURN_UNDEF;
-  if (result < 0)
-    {
-      croak ("Problem in AHFA_state_leo_lhs_symbol(%d): %s", AHFA_state_id,
-        xs_g_error (g_wrapper));
-    }
-  XPUSHs (sv_2mortal (newSViv (result)));
 }
 
 MODULE = Marpa::R2        PACKAGE = Marpa::R2::Thin::R

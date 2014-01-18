@@ -20,7 +20,7 @@ use warnings;
 use strict;
 
 use vars qw($VERSION $STRING_VERSION);
-$VERSION        = '2.079_009';
+$VERSION        = '2.079_010';
 $STRING_VERSION = $VERSION;
 $VERSION        = eval $VERSION;
 
@@ -237,8 +237,6 @@ sub show_AHFA {
     STATE:
     for ( my $state_id = 0; $state_id < $AHFA_state_count; $state_id++ ) {
         $text .= "* S$state_id:";
-        defined $grammar_c->_marpa_g_AHFA_state_leo_lhs_symbol($state_id)
-            and $text .= ' leo-c';
         $grammar_c->_marpa_g_AHFA_state_is_predict($state_id)
             and $text .= ' predict';
         $text .= "\n";

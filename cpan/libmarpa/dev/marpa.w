@@ -2777,7 +2777,6 @@ Marpa_NSY_ID _marpa_g_irl_rhs(Marpa_Grammar g, Marpa_IRL_ID irl_id, int ix) {
 }
 
 @ @d Length_of_IRL(irl) ((irl)->t_length)
-@d IRL_is_Unit_Rule(irl) ((irl)->t_length == 1)
 @<Int aligned IRL elements@> = int t_length;
 @ @<Function definitions@> =
 int _marpa_g_irl_length(Marpa_Grammar g, Marpa_IRL_ID irl_id) {
@@ -2787,6 +2786,13 @@ int _marpa_g_irl_length(Marpa_Grammar g, Marpa_IRL_ID irl_id) {
     @<Fail if |irl_id| is invalid@>@;
     return Length_of_IRL(IRL_by_ID(irl_id));
 }
+
+@ An IRL is a unit rule (that is, a rule of length one,
+not counting nullable symbols) if and only if its AIM
+count is 2 -- the predicted AIM and the final AIM.
+@d IRL_is_Unit_Rule(irl) ((irl)->t_aim_count == 2)
+@d AIM_Count_of_IRL(irl) ((irl)->t_aim_count)
+@<Int aligned IRL elements@> = int t_aim_count;
 
 @*0 IRL has virtual LHS?.
 This is for Marpa's ``internal semantics".
@@ -4886,6 +4892,9 @@ return item_id < (AIMID)AIM_Count_of_G(g) && item_id >= 0;
 |-1| if the item is a completion.
 @d Postdot_NSYID_of_AIM(item) ((item)->t_postdot_nsyid)
 @d AIM_is_Completion(aim) (Postdot_NSYID_of_AIM(aim) < 0)
+@d AIM_is_Leo(aim) (IRL_is_Leo(IRL_of_AIM(aim)))
+@d AIM_is_Leo_Completion(aim)
+  (AIM_is_Completion(aim) && AIM_is_Leo(aim))
 @<Int aligned AHFA item elements@> = NSYID t_postdot_nsyid;
 
 @*0 Leading nulls.
@@ -4898,14 +4907,23 @@ this AHFA items's dot position.
 @<Int aligned AHFA item elements@> =
 int t_leading_nulls;
 
-@*0 Position.
+@*0 RHS Position.
+RHS position include nulling symbols.
 Position in the RHS, -1 for a completion.
 @d Position_of_AIM(aim) ((aim)->t_position)
+@ Probably should replace this with the one
+based on the quasi-position.
 @d AIM_is_Prediction(aim) (
   Position_of_AIM(aim) >= 0
   && Position_of_AIM(aim) <= Null_Count_of_AIM(aim) )
 @<Int aligned AHFA item elements@> =
 int t_position;
+
+@*0 Quasi-position.
+Quasi-positions are those modulo nulling symbols.
+@d Quasi_Position_of_AIM(aim) ((aim)->t_quasi_position)
+@<Int aligned AHFA item elements@> =
+  int t_quasi_position;
 
 @*0 Singleton AHFA.
 A singleton AHFA whose only AHFA item is
@@ -4993,6 +5011,7 @@ int _marpa_g_AHFA_item_sort_key(Marpa_Grammar g,
 {
   int leading_nulls = 0;
   int rhs_ix;
+  const AIM first_aim_of_irl = current_item;
   for (rhs_ix = 0; rhs_ix < Length_of_IRL(irl); rhs_ix++)
     {
       NSYID rh_nsyid = RHSID_of_IRL (irl, rhs_ix);
@@ -5000,8 +5019,8 @@ int _marpa_g_AHFA_item_sort_key(Marpa_Grammar g,
         {
           Last_Proper_SYMI_of_IRL(irl) = symbol_instance_of_next_rule + rhs_ix;
           @<Create an AHFA item for a precompletion@>@;
-          leading_nulls = 0;
           current_item++;
+          leading_nulls = 0;
         }
       else
         {
@@ -5010,6 +5029,7 @@ int _marpa_g_AHFA_item_sort_key(Marpa_Grammar g,
     }
   @<Create an AHFA item for a completion@>@;
   current_item++;
+  AIM_Count_of_IRL(irl) = current_item - first_aim_of_irl;
 }
 
 @ @<Count the AHFA items in a rule@> =
@@ -5026,22 +5046,25 @@ int _marpa_g_AHFA_item_sort_key(Marpa_Grammar g,
 
 @ @<Create an AHFA item for a precompletion@> =
 {
-  IRL_of_AIM (current_item) = irl;
-  Sort_Key_of_AIM (current_item) = current_item - base_item;
-  Null_Count_of_AIM(current_item) = leading_nulls;
+  @<Initializations common to all AHFA items@>@;
   Postdot_NSYID_of_AIM (current_item) = rh_nsyid;
   Position_of_AIM (current_item) = rhs_ix;
-  AHFA_of_AIM(current_item) = NULL;
 }
 
 @ @<Create an AHFA item for a completion@> =
 {
-  IRL_of_AIM (current_item) = irl;
-  Sort_Key_of_AIM (current_item) = current_item - base_item;
-  Null_Count_of_AIM(current_item) = leading_nulls;
+  @<Initializations common to all AHFA items@>@;
   Postdot_NSYID_of_AIM (current_item) = -1;
   Position_of_AIM (current_item) = -1;
+}
+
+@ @<Initializations common to all AHFA items@> =
+{
+  IRL_of_AIM (current_item) = irl;
+  Null_Count_of_AIM(current_item) = leading_nulls;
+  Sort_Key_of_AIM (current_item) = current_item - base_item;
   AHFA_of_AIM(current_item) = NULL;
+  Quasi_Position_of_AIM(current_item) = current_item - first_aim_of_irl;
 }
 
 @ This is done after creating the AHFA items, because in
@@ -5049,6 +5072,9 @@ theory the |marpa_renew| might have moved them.
 This is not likely since the |marpa_renew| shortened the array,
 but if you are hoping for portability,
 you want to follow the rules.
+@ Walks backwards through the |AIM|'s, setting each to the the
+first of its |IRL|.  Last setting wins, which works since
+we are traversing backwards.
 @<Populate the first |AIM|'s of the |RULE|'s@> =
 {
   AIM items = g->t_AHFA_items;
@@ -5280,6 +5306,14 @@ CIL t_complete_nsyids;
 @d AEX_of_AHFA_by_AIM(ahfa, aim) aex_of_ahfa_by_aim_get((ahfa), (aim))
 @<Widely aligned AHFA state elements@> =
 AIM* t_items;
+
+@*0 AHFA to AIM macros.
+These assume there is only one AIM in the AHFA,
+which is the case with discovered AHFA's.
+@d AIM_of_AHFA(ahfa) AIM_of_AHFA_by_AEX((ahfa), 0)
+@d IRL_of_AHFA(ahfa) IRL_of_AIM(AIM_of_AHFA(ahfa))
+@d LHSID_of_AHFA(ahfa) LHSID_of_IRL(IRL_of_AHFA(ahfa))
+
 @ @d AIM_Count_of_AHFA(ahfa) ((ahfa)->t_item_count)
 @<Int aligned AHFA state elements@> =
 int t_item_count;
@@ -5313,22 +5347,6 @@ PRIVATE AEX aex_of_ahfa_by_aim_get(AHFA ahfa, AIM sought_aim)
   return -1;
 }
 
-@ Temporary?  This is for potential Leo items,
-and we need to return only the first,
-or -1 if there were none.
-@<Function definitions@> =
-PRIVATE AEX aex_of_ahfa_by_postdot_get(AHFA ahfa, NSYID sought_nsyid)
-{
-    const AIM* const aims = AIMs_of_AHFA(ahfa);
-    const int aim_count = AIM_Count_of_AHFA(ahfa);
-    int i;
-    for (i = 0; i < aim_count; i++) {
-      const NSYID working_nsyid = Postdot_NSYID_of_AIM (aims[i]);
-      if (working_nsyid == sought_nsyid) return i;
-    }
-  return -1;
-}
-
 @*0 Is AHFA predicted?.
 @ This boolean indicates whether the
 {\bf AHFA state} is predicted,
@@ -5340,18 +5358,6 @@ AHFA state 0 is {\bf not} a predicted AHFA state.
 @d YIM_is_Predicted(yim) AHFA_is_Predicted(AHFA_of_YIM(yim))
 @<Bit aligned AHFA state elements@> =
 BITFIELD t_is_predict:1;
-
-@*0 Is AHFA a potential Leo base?.
-@ This boolean indicates whether the
-AHFA state could be a Leo base.
-With the elimination of AHFA states, it may not longer be worth
-the trouble.
-@d AHFA_is_Potential_Leo_Base(ahfa) ((ahfa)->t_is_potential_leo_base)
-@d YIM_is_Potential_Leo_Base(yim) AHFA_is_Potential_Leo_Base(AHFA_of_YIM(yim))
-@ @<Bit aligned AHFA state elements@> =
-BITFIELD t_is_potential_leo_base:1;
-@ @<Initialize AHFA@> = AHFA_is_Potential_Leo_Base(ahfa) = 0;
-
 
 @*0 Event data.
 A boolean tracks whether this is an
@@ -5576,25 +5582,8 @@ The Leo LHS symbol is the LHS of the Leo IRL,
 The value of the Leo completion symbol is used to
 determine if an Earley item
 with this AHFA state is eligible to be a Leo completion.
-@d Leo_LHS_NSYID_of_AHFA(state) ((state)->t_leo_lhs_nsyid)
-@d Leo_IRLID_of_AHFA(state) ((state)->t_leo_irlid)
-@d AHFA_is_Leo_Completion(state) (Leo_IRLID_of_AHFA(state) >= 0)
-@ @<Int aligned AHFA state elements@> =
-  NSYID t_leo_lhs_nsyid;
-  IRLID t_leo_irlid;
-@ @<Initialize AHFA@> =
-  Leo_LHS_NSYID_of_AHFA(ahfa) = -1;
-  Leo_IRLID_of_AHFA(ahfa) = -1;
-@ @<Function definitions@> =
-Marpa_Symbol_ID _marpa_g_AHFA_state_leo_lhs_symbol(Marpa_Grammar g,
-        Marpa_AHFA_State_ID AHFA_state_id) {
-    @<Return |-2| on failure@>@;
-    AHFA state;
-    @<Fail if not precomputed@>@;
-    @<Fail if |AHFA_state_id| is invalid@>@;
-    state = AHFA_of_G_by_ID(g, AHFA_state_id);
-    return Leo_LHS_NSYID_of_AHFA(state);
-}
+@d AHFA_is_Leo_Completion(state)
+   AIM_is_Leo_Completion(AIM_of_AHFA_by_AEX((state), 0))
 
 @*0 Sorting AHFA states.
 @ The ordering of the AHFA states can be arbitrarily chosen
@@ -5668,7 +5657,6 @@ PRIVATE_NOT_INLINE int AHFA_state_cmp(
        the |DQUEUE|'s data */
    ahfa_count_of_g = AHFA_Count_of_G(g);
    @<Resort the AIMs@>@;
-   @<Mark potential Leo bases@>
    @<Free locals for creating AHFA states@>@;
 }
 
@@ -5717,42 +5705,13 @@ until then.
     }
 }
 
-@ With the elimination of AHFA states, marking potential leo base
-AHFA states or |AIM|'s may not be worth the trouble.
-@<Mark potential Leo bases@> =
-{
-  int ahfa_id;
-  for (ahfa_id = 0; ahfa_id < ahfa_count_of_g; ahfa_id++)
-    {
-      AHFA from_ahfa = AHFA_of_G_by_ID (g, ahfa_id);
-      AIM *aims = AIMs_of_AHFA (from_ahfa);
-      int aim_count = AIM_Count_of_AHFA (from_ahfa);
-      AEX aex;
-      for (aex = 0; aex < aim_count; aex++)
-        {
-          AIM from_ahfa_item = aims[aex];
-          NSYID postdot_nsyid = Postdot_NSYID_of_AIM (from_ahfa_item);
-          if (postdot_nsyid >= 0)
-            {
-              /* There is a next AIM because there is a postdot symbol */
-              AIM next_aim = Next_AIM_of_AIM(from_ahfa_item);
-              AHFA to_ahfa = AHFA_of_AIM(next_aim);
-              if (to_ahfa && AHFA_is_Leo_Completion (to_ahfa))
-                {
-                  AHFA_is_Potential_Leo_Base (from_ahfa) = 1;
-                }
-            }
-        }
-    }
-}
-
 @ @<Free locals for creating AHFA states@> =
   my_free(irl_by_sort_key);
   my_free(singleton_duplicates);
   _marpa_avl_destroy(duplicates);
 
-@ I am not sure there is a need to special-case these
-any more.
+@ This logic should be reworked after the transition away
+from AHFA states.
 @<Construct initial AHFA states@> =
 {
   AHFA p_initial_state = DQUEUE_PUSH (states, AHFA_Object);
@@ -5877,26 +5836,9 @@ create_singleton_AHFA_state(
 
         Postdot_NSY_Count_of_AHFA(new_ahfa) = 0;
         new_ahfa->t_empty_transition = NULL;
-        @<If this state can be a Leo completion,
-        set the Leo completion symbol to |lhs_id|@>@;
   }
   AHFA_of_AIM(base_aim) = new_ahfa;
   return new_ahfa;
-}
-
-@
-Assuming this is a 1-item completion, mark this state as
-a Leo completion if the rule is right recursive.
-This is an enhancement from Leo 1991.
-@<If this state can be a Leo completion,
-set the Leo completion symbol to |lhs_id|@> =
-{
-  const IRL aim_irl = IRL_of_AIM (base_aim);
-  if (IRL_is_Right_Recursive(aim_irl))
-    {
-      Leo_LHS_NSYID_of_AHFA (new_ahfa) = lhs_nsyid;
-      Leo_IRLID_of_AHFA (new_ahfa) = ID_of_IRL(aim_irl);
-    }
 }
 
 @ Discovered AHFA states are usually quite small
@@ -6435,26 +6377,27 @@ AHFAID _marpa_g_AHFA_state_empty_transition(Marpa_Grammar g,
          is an event AHFA.
          An AHFA, even if it is not itself an event AHFA,
          may be in a non-empty AHFA event group.  */
-      const NSYID outer_nsyid = Leo_LHS_NSYID_of_AHFA (outer_ahfa);
-      if (outer_nsyid < 0) {
+      NSYID outer_nsyid;
+      if (!AHFA_is_Leo_Completion(outer_ahfa)) {
           if (AHFA_has_Event (outer_ahfa)) {
               Event_Group_Size_of_AHFA (outer_ahfa) = 1;
           }
         continue;               /* This AHFA is not a Leo completion,
                                    so we are done. */
        }
+      outer_nsyid = LHSID_of_AHFA (outer_ahfa);
       for (inner_ahfa_id = 0; inner_ahfa_id < ahfa_count_of_g;
            inner_ahfa_id++)
         {
-          IRLID inner_nsyid;
+          NSYID inner_nsyid;
           const AHFA inner_ahfa = AHFA_by_ID (inner_ahfa_id);
           if (!AHFA_has_Event (inner_ahfa))
             continue;           /* Not in the group, because it
                                    is not an event AHFA. */
-          inner_nsyid = Leo_LHS_NSYID_of_AHFA (inner_ahfa);
-          if (inner_nsyid < 0)
+          if (!AHFA_is_Leo_Completion(inner_ahfa))
             continue;           /* This AHFA is not a Leo completion,
                                    so we are done. */
+          inner_nsyid = LHSID_of_AHFA (inner_ahfa);
           if (matrix_bit_test (nsy_by_right_nsy_matrix,
                                outer_nsyid,
                                inner_nsyid))
@@ -7577,7 +7520,6 @@ be recopied to make way for pointers to the linked lists.
     Complete_NSYID_of_AHFA(AHFA_of_YIM(item), (ix))
 @d Complete_NSY_Count_of_YIM(item)
     Complete_NSY_Count_of_AHFA(AHFA_of_YIM(item))
-@d Leo_IRLID_of_YIM(yim) Leo_IRLID_of_AHFA(AHFA_of_YIM(yim))
 @ It might be slightly faster if this boolean is memoized in the Earley item
 when the Earley item is initialized.
 @d Earley_Item_is_Completion(item)
@@ -9925,8 +9867,9 @@ At this point there are no Leo items.
           PIM new_pim;
           NSYID nsyid;
 
-          /* Need to be aligned for a PIM */
-          new_pim = marpa__obs_alloc (r->t_obs, sizeof (YIX_Object), ALIGNOF(PIM_Object));
+	  /* Need to be aligned for a PIM */
+          new_pim = marpa__obs_alloc(r->t_obs,
+            sizeof(YIX_Object), ALIGNOF(PIM_Object));
 
           nsyid = postdot_nsyidary[nsy_ix];
           Postdot_NSYID_of_PIM(new_pim) = nsyid;
@@ -9961,48 +9904,76 @@ Leo item have not been fully populated.
       for (nsyid = (NSYID) min; nsyid <= (NSYID) max; nsyid++)
 	{
 	  const PIM this_pim = r->t_pim_workarea[nsyid];
-	  if (!Next_PIM_of_PIM (this_pim))
-	    {			/* Do not create a Leo item if there is more
-				   than one YIX */
-	      const YIM leo_base = YIM_of_PIM (this_pim);
-	      AIM potential_leo_penult_aim = NULL;
-	      if (YIM_is_Predicted (leo_base))
+	  if (Next_PIM_of_PIM (this_pim))
+	    goto NEXT_NSYID;
+                /* Do not create a Leo item if there is more
+                   than one YIX */
+          {
+	    const YIM leo_base = YIM_of_PIM (this_pim);
+	    AIM potential_leo_penult_aim = NULL;
+	    if (YIM_is_Predicted (leo_base))
+	      {
+		const AHFA leo_base_ahfa = AHFA_of_YIM (leo_base);
+		const AIM *const aims = AIMs_of_AHFA (leo_base_ahfa);
+		const int aim_count = AIM_Count_of_AHFA (leo_base_ahfa);
+		int i;
+		int trial_aex = -1;
+		for (i = 0; i < aim_count; i++)
+		  {		// Find where our nysid is in the AIM's
+		    const AIM trial_aim = aims[i];
+		    const NSYID trial_nsyid =
+		      Postdot_NSYID_of_AIM (trial_aim);
+		    if (trial_nsyid != nsyid)
+		      continue;
+		    trial_aex = i;
+		    break;
+		  }
+                /* We know that aex is initialized here */
+                MARPA_ASSERT (trial_aex > 0);
+		for (i = trial_aex + 1; i < aim_count; i++)
+		  {		// But check for duplicates 
+		    const AIM trial_aim = aims[i];
+		    const NSYID trial_nsyid =
+		      Postdot_NSYID_of_AIM (trial_aim);
+		    if (trial_nsyid == nsyid)
+		      goto NEXT_NSYID;
+		  }
 		{
-		  if (YIM_is_Potential_Leo_Base (leo_base))
-		    {
-		      const AHFA leo_base_ahfa = AHFA_of_YIM (leo_base);
-		      const AEX potential_leo_aex =
-			aex_of_ahfa_by_postdot_get (leo_base_ahfa, nsyid);
-		      if (potential_leo_aex >= 0)
-			{
-			  potential_leo_penult_aim =
-			    AIM_of_AHFA_by_AEX (leo_base_ahfa,
-						potential_leo_aex);
-			}
-		    }
+		  const AIM trial_aim = aims[trial_aex];
+		  const IRL trial_irl = IRL_of_AIM (trial_aim);
+		  if (!IRL_is_Unit_Rule (trial_irl))
+		    goto NEXT_NSYID;
+		  if (!IRL_is_Leo (trial_irl))
+		    goto NEXT_NSYID;
+		  potential_leo_penult_aim = trial_aim;
+		  MARPA_ASSERT (AIM_is_Leo_Completion
+				(Next_AIM_of_AIM (potential_leo_penult_aim)));
 		}
-	      else
+	      }
+	    else
+	      {
+		// Not a prediction, so there is only one AIM.
+		const AHFA leo_base_ahfa = AHFA_of_YIM (leo_base);
+		const AIM leo_base_aim =
+		  AIM_of_AHFA_by_AEX (leo_base_ahfa, 0);
+		const IRL leo_base_irl = IRL_of_AIM (leo_base_aim);
+
+		if (!IRL_is_Leo (leo_base_irl))
+		  goto NEXT_NSYID;
+		potential_leo_penult_aim = leo_base_aim;
+	      }
+            MARPA_ASSERT(potential_leo_penult_aim);
+	    {
+	      const AIM base_to_aim =
+		Next_AIM_of_AIM (potential_leo_penult_aim);
+	      const AHFA base_to_ahfa = AHFA_of_AIM (base_to_aim);
+	      if (AHFA_is_Leo_Completion (base_to_ahfa))
 		{
-		  // Not a prediction, so there is only one AIM.
-                  // "potential" bit is not accurate, except for discovered |AIM|'s
-		  if (YIM_is_Potential_Leo_Base (leo_base))
-		    {
-		      const AHFA leo_base_ahfa = AHFA_of_YIM (leo_base);
-		      potential_leo_penult_aim =
-			AIM_of_AHFA_by_AEX (leo_base_ahfa, 0);
-		    }
-		}
-	      if (potential_leo_penult_aim)
-		{
-		  const AIM base_to_aim =
-		    Next_AIM_of_AIM (potential_leo_penult_aim);
-		  const AHFA base_to_ahfa = AHFA_of_AIM (base_to_aim);
-		  if (AHFA_is_Leo_Completion (base_to_ahfa))
-		    {
-		      @<Create a new, unpopulated, LIM@>@;
-		    }
+		  @<Create a new, unpopulated, LIM@>@;
 		}
 	    }
+	  }
+	NEXT_NSYID:;
 	}
     }
 }
@@ -10161,7 +10132,7 @@ In a populated LIM, this will not necessarily be the case.
   const YS predecessor_set = Origin_of_YIM (base_yim);
   const AHFA base_to_ahfa = Base_to_AHFA_of_LIM (lim_to_process);
   const NSYID predecessor_transition_nsyid =
-    Leo_LHS_NSYID_of_AHFA (base_to_ahfa);
+    LHSID_of_AHFA (base_to_ahfa);
   PIM predecessor_pim;
   if (Ord_of_YS (predecessor_set) < Ord_of_YS (current_earley_set))
     {
@@ -11249,6 +11220,7 @@ or-nodes follow a completion.
         {
           DAND draft_and_node;
           const int rhs_ix = symbol_instance - SYMI_of_IRL(path_irl);
+          MARPA_ASSERT (rhs_ix < Length_of_IRL (path_irl)) @;
           const OR predecessor = rhs_ix ? last_or_node : NULL;
           const OR cause = Nulling_OR_by_NSYID( RHSID_of_IRL (path_irl, rhs_ix ) );
           MARPA_ASSERT (symbol_instance < Length_of_IRL (path_irl)) @;
