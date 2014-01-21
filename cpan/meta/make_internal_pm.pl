@@ -97,7 +97,7 @@ use warnings;
 use Carp;
 
 use vars qw($VERSION $STRING_VERSION);
-$VERSION        = '2.079_010';
+$VERSION        = '2.079_011';
 $STRING_VERSION = $VERSION;
 $VERSION = eval $VERSION;
 END_OF_HEADER
@@ -271,6 +271,9 @@ __DATA__
       both structures from being freed, and create a memory leak. }
 
     SLR { The underlying SLR }
+    LEXEME_RESOLUTIONS
+    RULE_RESOLUTIONS
+
     FACTORING_MAX
     RULE_BLESSINGS
     SYMBOL_BLESSINGS

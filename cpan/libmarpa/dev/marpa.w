@@ -5637,21 +5637,27 @@ PRIVATE_NOT_INLINE int AHFA_state_cmp(
    @<Construct right derivation matrix@>@;
    @<Construct initial AHFA states@>@;
 
+{
+  AIMID aim_id;
+  const int aim_count = AIM_Count_of_G (g);
+  for (aim_id = 0; aim_id < aim_count; aim_id++)
     {
-      AIMID aim_id;
-      const int aim_count = AIM_Count_of_G (g);
-      for (aim_id = 0; aim_id < aim_count; aim_id++)
-        {
-          const AIM aim = AIM_by_ID (aim_id);
-          if (!AIM_is_Prediction (aim))
-            {
-              create_singleton_AHFA_state (g, aim, singleton_duplicates,
-                                           irl_by_sort_key, &states, duplicates,
-                                           item_list_working_buffer,
-                                           prediction_matrix);
-            }
-        }
+      const AIM aim = AIM_by_ID (aim_id);
+      if (AIM_is_Prediction (aim))
+	{
+	  create_predicted_singleton (g, irl_by_sort_key, &states,
+				      duplicates,
+				      item_list_working_buffer, aim);
+	}
+      else
+	{
+	  create_singleton_AHFA_state (g, aim, singleton_duplicates,
+				       irl_by_sort_key, &states, duplicates,
+				       item_list_working_buffer,
+				       prediction_matrix);
+	}
     }
+}
 
    g->t_AHFA = DQUEUE_BASE(states, AHFA_Object); /* ``Steals"
        the |DQUEUE|'s data */
@@ -6178,6 +6184,55 @@ create_predicted_AHFA_state(
   p_new_state->t_empty_transition = NULL;
   Completion_CIL_of_AHFA(p_new_state) = cil_empty (&g->t_cilar);
   @<Calculate postdot symbols for predicted state@>@;
+  return p_new_state;
+}
+
+@ @<Function definitions@> =
+PRIVATE_NOT_INLINE AHFA
+create_predicted_singleton(
+     GRAMMAR g,
+     IRL* irl_by_sort_key,
+     DQUEUE states_p,
+     MARPA_AVL_TREE duplicates,
+     AIM* item_list_working_buffer,
+     AIM aim_prediction
+     )
+{
+  AHFA p_new_state;
+  int item_list_ix = 0;
+  const int no_of_items_in_new_state = 1;
+  item_list_working_buffer[item_list_ix++] = aim_prediction;
+
+  p_new_state = DQUEUE_PUSH ((*states_p), AHFA_Object);
+  AHFA_initialize (g, p_new_state);
+  p_new_state->t_items = item_list_working_buffer;
+  p_new_state->t_item_count = no_of_items_in_new_state;
+  {
+    AHFA queued_AHFA_state = assign_AHFA_state (p_new_state, duplicates);
+    if (queued_AHFA_state)
+      {
+        /* The new state would be a duplicate.
+           Back it out and return the one that already exists */
+        (void) DQUEUE_POP ((*states_p), AHFA_Object);
+        AHFA_Count_of_G(g)--;
+        return queued_AHFA_state;
+      }
+  }
+  // The new state was added -- finish up its data
+  {
+    int i;
+    AIM *const final_aim_list = p_new_state->t_items =
+      marpa_obs_new (g->t_obs, AIM, no_of_items_in_new_state );
+    for (i = 0; i < no_of_items_in_new_state; i++)
+      {
+        final_aim_list[i] = item_list_working_buffer[i];
+      }
+  }
+  AHFA_is_Predicted (p_new_state) = 1;
+  p_new_state->t_empty_transition = NULL;
+  Completion_CIL_of_AHFA(p_new_state) = cil_empty (&g->t_cilar);
+  @<Calculate postdot symbols for predicted state@>@;
+  AHFA_of_AIM(aim_prediction) = p_new_state;
   return p_new_state;
 }
 
@@ -9308,6 +9363,7 @@ marpa_r_earleme_complete(Marpa_Recognizer r)
       YIM cause = *cause_p;
         @<Add new Earley items for |cause|@>@;
     }
+    @<Add predictions@>@;
     postdot_items_create(r, bv_ok_for_chain, current_earley_set);
 
       /* \comment If no terminals are expected, and there are no Earley items in
@@ -9424,18 +9480,12 @@ The return value means success, with no events.
 
 @ @<Create the earley items for |scanned_AHFA|@> =
 {
-  const AHFA prediction_AHFA = Empty_Transition_of_AHFA (scanned_AHFA);
   const YIM scanned_earley_item = earley_item_assign (r,
 						      current_earley_set,
 						      Origin_of_YIM
 						      (predecessor),
 						      scanned_AHFA);
   tkn_link_add (r, scanned_earley_item, predecessor, tkn);
-  if (prediction_AHFA)
-    {
-      earley_item_assign (r, current_earley_set, current_earley_set,
-			  prediction_AHFA);
-    }
 }
 
 @ @<Pre-populate the completion stack@> = {
@@ -9523,17 +9573,10 @@ add those Earley items it ``causes".
    const YIM effect = earley_item_assign(r, current_earley_set,
         origin, effect_AHFA);
    if (Earley_Item_has_No_Source(effect)) {
-          const AHFA prediction_AHFA_state =
-            Empty_Transition_of_AHFA (effect_AHFA);
        /* If it has no source, then it is new */
        if (Earley_Item_is_Completion(effect)) {
            @<Push |effect| onto completion stack@>@;
        }
-      if (prediction_AHFA_state)
-        {
-          earley_item_assign (r, current_earley_set, current_earley_set,
-                              prediction_AHFA_state);
-        }
    }
    completion_link_add(r, effect, predecessor, cause);
 }
@@ -9555,6 +9598,23 @@ add those Earley items it ``causes".
         @<Push |effect| onto completion stack@>@;
       }
     leo_link_add (r, effect, leo_item, cause);
+}
+
+@ @<Add predictions@> =
+{
+    YIM* work_earley_items = MARPA_DSTACK_BASE (r->t_yim_work_stack, YIM );
+    int no_of_work_earley_items = MARPA_DSTACK_LENGTH (r->t_yim_work_stack );
+    int ix;
+    for (ix = 0;
+         ix < no_of_work_earley_items;
+         ix++) {
+        YIM earley_item = work_earley_items[ix];
+      const AHFA state = AHFA_of_YIM (earley_item);
+      const AHFA prediction_AHFA = Empty_Transition_of_AHFA (state);
+      if (!prediction_AHFA) continue;
+      earley_item_assign (r, current_earley_set, current_earley_set,
+			  prediction_AHFA);
+    }
 }
 
 @ @<Function definitions@> =

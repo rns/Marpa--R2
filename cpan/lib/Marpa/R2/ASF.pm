@@ -21,7 +21,7 @@ use warnings;
 no warnings qw(recursion);
 
 use vars qw($VERSION $STRING_VERSION);
-$VERSION        = '2.079_010';
+$VERSION        = '2.079_011';
 $STRING_VERSION = $VERSION;
 ## no critic(BuiltinFunctions::ProhibitStringyEval)
 $VERSION = eval $VERSION;
@@ -374,6 +374,10 @@ sub Marpa::R2::ASF::new {
     } ## end if ( defined $recce->[Marpa::R2::Internal::Recognizer::TREE_MODE...])
     $recce->[Marpa::R2::Internal::Recognizer::TREE_MODE] = 'forest';
 
+    (   $asf->[Marpa::R2::Internal::ASF::RULE_RESOLUTIONS],
+        $asf->[Marpa::R2::Internal::ASF::LEXEME_RESOLUTIONS]
+    ) = Marpa::R2::Internal::Value::resolve_recce( $recce, $slr );
+
     $asf->[Marpa::R2::Internal::ASF::SYMCH_BLESSING_PACKAGE] = 'My_Symch';
     $asf->[Marpa::R2::Internal::ASF::FACTORING_BLESSING_PACKAGE] =
         'My_Factoring';
@@ -397,16 +401,20 @@ sub Marpa::R2::ASF::new {
     my $grammar_c = $grammar->[Marpa::R2::Internal::Grammar::C];
     my $recce_c   = $recce->[Marpa::R2::Internal::Recognizer::C];
 
-    $recce->ordering_create()
-        if not $recce->[Marpa::R2::Internal::Recognizer::O_C];
-
-    my $bocage   = $recce->[Marpa::R2::Internal::Recognizer::B_C];
     my $ordering = $recce->[Marpa::R2::Internal::Recognizer::O_C];
+    if (not $ordering) {
+        if (not $recce->ordering_create()) {
+            Marpa::R2::exception( "Parse failed\n") }
+        $ordering = $recce->[Marpa::R2::Internal::Recognizer::O_C];
+    }
+
     Marpa::R2::exception(
         "An attempt was make to create an ASF for a null parse\n",
         "  A null parse is a successful parse of a zero-length string\n",
         "  ASF's are not defined for null parses\n"
     ) if $ordering->is_null();
+
+    my $bocage   = $recce->[Marpa::R2::Internal::Recognizer::B_C];
 
     my $or_nodes = $asf->[Marpa::R2::Internal::ASF::OR_NODES] = [];
     use sort 'stable';
